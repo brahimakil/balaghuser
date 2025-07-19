@@ -24,8 +24,8 @@ const MartyrDetail: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-
-        // Fetch ONLY this specific martyr directly from Firebase
+        
+        // Fetch ONLY this specific martyr - no context, no bulk loading
         const fetchedMartyr = await getMartyrById(id);
         if (fetchedMartyr) {
           setMartyr(fetchedMartyr);
@@ -41,7 +41,7 @@ const MartyrDetail: React.FC = () => {
     };
 
     fetchMartyr();
-  }, [id]); // Removed dependency on state.martyrs
+  }, [id]);
 
   const handleBackToMartyrs = () => {
     navigate('/martyrs');

@@ -19,24 +19,69 @@ function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <DataProvider>
-          <Router>
-            <ScrollToTop />
-            <Routes>
-              <Route path="/" element={<Layout />}>
-                <Route index element={<Dashboard />} />
-                <Route path="locations" element={<Locations />} />
-                <Route path="locations/:id" element={<LocationDetail />} />
-                <Route path="martyrs" element={<Martyrs />} />
-                <Route path="martyrs/:id" element={<MartyrDetail />} />
-                <Route path="activities" element={<Activities />} />
-                <Route path="activities/:id" element={<ActivityDetail />} />
-                <Route path="news" element={<News />} />
-                <Route path="news/:id" element={<NewsDetail />} />
-              </Route>
-            </Routes>
-          </Router>
-        </DataProvider>
+        <Router>
+          <ScrollToTop />
+          <Routes>
+            {/* Routes WITH DataProvider */}
+            <Route path="/" element={
+              <DataProvider>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </DataProvider>
+            } />
+            <Route path="/locations" element={
+              <DataProvider>
+                <Layout>
+                  <Locations />
+                </Layout>
+              </DataProvider>
+            } />
+            <Route path="/martyrs" element={
+              <DataProvider>
+                <Layout>
+                  <Martyrs />
+                </Layout>
+              </DataProvider>
+            } />
+            <Route path="/activities" element={
+              <DataProvider>
+                <Layout>
+                  <Activities />
+                </Layout>
+              </DataProvider>
+            } />
+            <Route path="/news" element={
+              <DataProvider>
+                <Layout>
+                  <News />
+                </Layout>
+              </DataProvider>
+            } />
+
+            {/* Routes WITHOUT DataProvider - Fast loading */}
+            <Route path="/martyrs/:id" element={
+              <Layout>
+                <MartyrDetail />
+              </Layout>
+            } />
+            <Route path="/locations/:id" element={
+              <Layout>
+                <LocationDetail />
+              </Layout>
+            } />
+            <Route path="/news/:id" element={
+              <Layout>
+                <NewsDetail />
+              </Layout>
+            } />
+            <Route path="/activities/:id" element={
+              <Layout>
+                <ActivityDetail />
+              </Layout>
+            } />
+          </Routes>
+        </Router>
       </LanguageProvider>
     </ThemeProvider>
   );
