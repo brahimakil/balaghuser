@@ -1,4 +1,4 @@
-import { collection, getDocs, query, limit } from 'firebase/firestore';
+import { collection, getDocs, query, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 export interface Martyr {
@@ -67,5 +67,24 @@ export const getAllMartyrs = async (): Promise<Martyr[]> => {
   } catch (error) {
     console.error('Error fetching all martyrs:', error);
     return [];
+  }
+};
+
+export const getMartyrById = async (id: string): Promise<Martyr | null> => {
+  try {
+    const docRef = doc(db, 'martyrs', id);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return {
+        id: docSnap.id,
+        ...docSnap.data()
+      } as Martyr;
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching martyr:', error);
+    return null;
   }
 }; 
