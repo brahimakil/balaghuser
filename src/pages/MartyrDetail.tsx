@@ -2,14 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { User, ArrowLeft, Calendar, Heart, Users, Info, Share, QrCode } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { useData } from '../contexts/DataContext';
 import { getMartyrById, type Martyr } from '../services/martyrsService';
 
 const MartyrDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { language, isRTL } = useLanguage();
-  const { state } = useData();
   
   const [martyr, setMartyr] = useState<Martyr | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,15 +25,7 @@ const MartyrDetail: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // First try to find in context data
-        const contextMartyr = state.martyrs.find(m => m.id === id);
-        if (contextMartyr) {
-          setMartyr(contextMartyr);
-          setLoading(false);
-          return;
-        }
-
-        // If not found in context, fetch directly from Firebase
+        // Fetch ONLY this specific martyr directly from Firebase
         const fetchedMartyr = await getMartyrById(id);
         if (fetchedMartyr) {
           setMartyr(fetchedMartyr);
@@ -51,7 +41,7 @@ const MartyrDetail: React.FC = () => {
     };
 
     fetchMartyr();
-  }, [id, state.martyrs]);
+  }, [id]); // Removed dependency on state.martyrs
 
   const handleBackToMartyrs = () => {
     navigate('/martyrs');
