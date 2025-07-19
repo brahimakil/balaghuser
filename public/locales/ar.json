@@ -1,0 +1,21 @@
+{
+  "navigation": {
+    "dashboard": "لوحة التحكم",
+    "locations": "المواقع",
+    "martyrs": "الشهداء",
+    "activities": "الأنشطة",
+    "news": "الأخبار"
+  },
+  "common": {
+    "darkMode": "الوضع المظلم",
+    "lightMode": "الوضع المضيء",
+    "language": "اللغة",
+    "welcome": "مرحباً",
+    "loading": "جاري التحميل..."
+  },
+  "dashboard": {
+    "title": "لوحة التحكم",
+    "subtitle": "مرحباً بك في لوحة التحكم",
+    "overview": "نظرة عامة"
+  }
+}

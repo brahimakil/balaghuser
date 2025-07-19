@@ -1,0 +1,21 @@
+{
+  "navigation": {
+    "dashboard": "Dashboard",
+    "locations": "Locations", 
+    "martyrs": "Martyrs",
+    "activities": "Activities",
+    "news": "News"
+  },
+  "common": {
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode",
+    "language": "Language",
+    "welcome": "Welcome",
+    "loading": "Loading..."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Welcome to your dashboard",
+    "overview": "Overview"
+  }
+}
