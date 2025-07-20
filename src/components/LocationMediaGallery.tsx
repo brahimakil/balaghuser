@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Image, Video, Globe, ZoomIn } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import Simple360Viewer from './Simple360Viewer';
+import Pannellum360Viewer from './Pannellum360Viewer';
 import type { MediaFile } from '../services/locationsService';
 
 interface LocationMediaGalleryProps {
@@ -212,7 +212,7 @@ const LocationMediaGallery: React.FC<LocationMediaGalleryProps> = ({
 
       {/* 360° Photo Viewer */}
       {show360Viewer && (
-        <Simple360Viewer
+        <Pannellum360Viewer
           imageUrl={show360Viewer}
           onClose={() => setShow360Viewer(null)}
         />
