@@ -5,6 +5,7 @@ type Language = 'en' | 'ar';
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
+  toggleLanguage: () => void; // Add this line
   t: (key: string) => string;
   isRTL: boolean;
 }
@@ -46,6 +47,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
   }, [language]);
 
+  // Add toggleLanguage function
+  const toggleLanguage = () => {
+    setLanguage(prevLang => prevLang === 'en' ? 'ar' : 'en');
+  };
+
   const t = (key: string): string => {
     const keys = key.split('.');
     let value = translations;
@@ -60,7 +66,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const isRTL = language === 'ar';
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, isRTL }}>
+    <LanguageContext.Provider value={{ language, setLanguage, toggleLanguage, t, isRTL }}>
       {children}
     </LanguageContext.Provider>
   );

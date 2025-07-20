@@ -129,12 +129,14 @@ const Header: React.FC = () => {
           </Link>
 
           {/* Navigation - Desktop */}
-          <nav className="hidden md:flex space-x-8">
+          <nav className={`hidden md:flex ${isRTL ? 'gap-8' : 'space-x-8'}`}>
             {navItems.map((item) => (
               <Link
                 key={item.key}
                 to={item.path}
-                className={`transition-colors ${
+                className={`transition-colors whitespace-nowrap ${
+                  isRTL ? 'font-arabic px-1' : ''
+                } ${
                   isActivePath(item.path)
                     ? 'text-accent-600 dark:text-accent-400 font-medium'
                     : 'text-primary-600 dark:text-primary-300 hover:text-accent-600 dark:hover:text-accent-400'

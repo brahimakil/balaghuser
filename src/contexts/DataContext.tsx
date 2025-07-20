@@ -199,15 +199,90 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const getTodayActivities = (): Activity[] => {
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    console.log('=== DEBUG: getTodayActivities called ===');
+    
+    const now = new Date();
+    console.log('Current time:', now.toISOString());
+    
+    if (state.activities.length === 0) {
+      console.log('❌ No activities found in state');
+      return [];
+    }
 
-    return state.activities.filter(activity => {
-      if (activity.isPrivate) return false;
-      const activityDate = activity.date.toDate();
-      return activityDate >= startOfDay && activityDate < endOfDay;
+    console.log('Total activities to check:', state.activities.length);
+
+    const filteredActivities = state.activities.filter((activity, index) => {
+      console.log(`\n--- Activity ${index + 1}: ${activity.nameEn} ---`);
+      
+      if (activity.isPrivate) {
+        console.log('❌ SKIP: Private activity');
+        return false;
+      }
+      
+      let activityStartDate: Date;
+      
+      try {
+        // Parse the start date
+        if (activity.date?.toDate) {
+          activityStartDate = activity.date.toDate();
+        } else if (activity.date instanceof Date) {
+          activityStartDate = activity.date;
+        } else if (typeof activity.date === 'string') {
+          activityStartDate = new Date(activity.date);
+        } else if (typeof activity.date === 'number') {
+          activityStartDate = new Date(activity.date);
+        } else {
+          console.log('❌ SKIP: Invalid date format');
+          return false;
+        }
+        
+        if (isNaN(activityStartDate.getTime())) {
+          console.log('❌ SKIP: Invalid date');
+          return false;
+        }
+        
+        // Calculate end date
+        const durationHours = activity.durationHours || 1;
+        const activityEndDate = new Date(activityStartDate.getTime() + (durationHours * 60 * 60 * 1000));
+        
+        console.log('Activity times:', {
+          start: activityStartDate.toISOString(),
+          end: activityEndDate.toISOString(),
+          duration: durationHours + ' hours',
+          now: now.toISOString()
+        });
+        
+        // Simple check: is the activity running right now?
+        const isCurrentlyRunning = now >= activityStartDate && now <= activityEndDate;
+        
+        console.log('Time check:', {
+          nowAfterStart: now >= activityStartDate,
+          nowBeforeEnd: now <= activityEndDate,
+          isCurrentlyRunning
+        });
+        
+        if (isCurrentlyRunning) {
+          console.log('✅ INCLUDE: Activity is currently running');
+        } else {
+          console.log('❌ SKIP: Activity is not currently running');
+        }
+        
+        return isCurrentlyRunning;
+        
+      } catch (error) {
+        console.error('❌ SKIP: Error processing activity:', error);
+        return false;
+      }
     });
+
+    console.log('=== RESULTS ===');
+    console.log('Found', filteredActivities.length, 'currently running activities');
+    filteredActivities.forEach(activity => {
+      console.log('- ' + (activity.nameEn || activity.nameAr));
+    });
+    console.log('=== END DEBUG ===\n');
+
+    return filteredActivities;
   };
 
   const getLegendById = (legendId: string): Legend | null => {
