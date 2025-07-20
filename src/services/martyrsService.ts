@@ -1,6 +1,12 @@
 import { collection, getDocs, query, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
+export interface MediaFile {
+  fileName: string;
+  fileType: 'image' | 'video';
+  url: string;
+}
+
 export interface Martyr {
   id: string;
   nameEn: string;
@@ -16,6 +22,8 @@ export interface Martyr {
   dob: any;
   createdAt: any;
   updatedAt: any;
+  photos?: MediaFile[];
+  videos?: MediaFile[];
 }
 
 // Cache for martyrs to avoid refetching

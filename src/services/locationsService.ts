@@ -1,6 +1,12 @@
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
+export interface MediaFile {
+  fileName: string;
+  fileType: 'image' | 'video';
+  url: string;
+}
+
 export interface Location {
   id: string;
   nameEn: string;
@@ -13,6 +19,9 @@ export interface Location {
   mainImage: string;
   createdAt: any;
   updatedAt: any;
+  photos?: MediaFile[];
+  videos?: MediaFile[];
+  photos360?: MediaFile[];
 }
 
 export interface Legend {
@@ -71,6 +80,25 @@ export const getLegendById = async (legendId: string): Promise<Legend | null> =>
     }
   } catch (error) {
     console.error('Error fetching legend:', error);
+    return null;
+  }
+};
+
+export const getLocationById = async (id: string): Promise<Location | null> => {
+  try {
+    const docRef = doc(db, 'locations', id);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return {
+        id: docSnap.id,
+        ...docSnap.data()
+      } as Location;
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching location:', error);
     return null;
   }
 }; 

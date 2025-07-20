@@ -1,114 +1,153 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, ArrowLeft, Calendar, Info, Share } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { useData } from '../contexts/DataContext';
-import HeroBanner from '../components/HeroBanner';
+import { getLocationById, getLegendById, type Location, type Legend } from '../services/locationsService';
+import LocationMediaGallery from '../components/LocationMediaGallery';
 
 const LocationDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { language, isRTL } = useLanguage();
-  const { state, getLegendById } = useData();
+  
+  const [location, setLocation] = useState<Location | null>(null);
+  const [legend, setLegend] = useState<Legend | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const location = state.locations.find(loc => loc.id === id);
-  const legend = location ? getLegendById(location.legendId) : null;
+  useEffect(() => {
+    const fetchLocationData = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch location data
+        const locationData = await getLocationById(id);
+        if (!locationData) {
+          setError('Location not found');
+          return;
+        }
+        
+        setLocation(locationData);
+        
+        // Fetch legend data
+        if (locationData.legendId) {
+          const legendData = await getLegendById(locationData.legendId);
+          setLegend(legendData);
+        }
+        
+      } catch (err) {
+        console.error('Error fetching location:', err);
+        setError('Failed to load location data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLocationData();
+  }, [id]);
 
   // Scroll to top when component mounts or ID changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [id]);
 
-  if (!location) {
+  const handleBackToLocations = () => {
+    navigate('/locations');
+  };
+
+  const handleViewOnMap = () => {
+    navigate(`/?location=${id}`);
+  };
+
+  const handleShareLocation = () => {
+    const currentUrl = window.location.href;
+    if (navigator.share) {
+      navigator.share({
+        title: language === 'ar' ? location?.nameAr : location?.nameEn,
+        text: language === 'ar' ? location?.descriptionAr : location?.descriptionEn,
+        url: currentUrl,
+      });
+    } else {
+      navigator.clipboard.writeText(currentUrl);
+      alert(language === 'ar' ? 'تم نسخ الرابط!' : 'Link copied!');
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="animate-fade-in">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-          <MapPin className="h-16 w-16 text-primary-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-primary-900 dark:text-white mb-2">
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  if (error || !location) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-primary-900 dark:text-white mb-4">
             {language === 'ar' ? 'الموقع غير موجود' : 'Location Not Found'}
           </h1>
           <p className="text-primary-600 dark:text-primary-400 mb-6">
-            {language === 'ar' ? 'لم يتم العثور على الموقع المطلوب' : 'The requested location could not be found'}
+            {error || (language === 'ar' ? 'لا يمكن العثور على الموقع المطلوب' : 'The requested location could not be found')}
           </p>
           <button
-            onClick={() => navigate('/locations')}
-            className="inline-flex items-center space-x-2 px-6 py-3 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors"
+            onClick={handleBackToLocations}
+            className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors"
           >
-            <ArrowLeft className="h-5 w-5" />
-            <span>{language === 'ar' ? 'العودة للمواقع' : 'Back to Locations'}</span>
+            {language === 'ar' ? 'العودة إلى المواقع' : 'Back to Locations'}
           </button>
         </div>
       </div>
     );
   }
 
-  const handleShareLocation = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: name,
-        text: `${language === 'ar' ? 'استكشف موقع' : 'Explore location'} ${name}`,
-        url: window.location.href,
-      });
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-    }
-  };
-  const name = language === 'ar' ? location.nameAr : location.nameEn;
-  const description = language === 'ar' ? location.descriptionAr : location.descriptionEn;
-  const legendName = legend ? (language === 'ar' ? legend.nameAr : legend.nameEn) : '';
-  const legendDescription = legend ? (language === 'ar' ? legend.descriptionAr : legend.descriptionEn) : '';
-
-
-  const handleViewOnMap = () => {
-    // Navigate to dashboard with location query parameter
-    navigate(`/?location=${location.id}`);
-  };
-
-  const handleBackToLocations = () => {
-    navigate('/locations');
-  };
-  
-
   return (
-    <div className="animate-fade-in">
+    <div className="min-h-screen bg-primary-50 dark:bg-primary-900">
       {/* Hero Banner */}
-      <div className="relative h-[40vh] md:h-[50vh] lg:h-[60vh] min-h-[300px] overflow-hidden">
-        {location.mainImage ? (
-          <div 
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url(${location.mainImage})` }}
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-accent-800 via-accent-700 to-accent-900" />
-        )}
+      <div className="relative h-96 overflow-hidden">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: location.mainImage ? `url(${location.mainImage})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+          }}
+        />
         
         {/* Overlay */}
-        <div className="absolute inset-0 bg-black/50" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
         
-        {/* Content */}
-        <div className="relative h-full flex items-end px-4 sm:px-6 lg:px-8 pb-8">
-          <div className={`max-w-4xl ${isRTL ? 'text-right font-arabic' : 'text-left'}`}>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3 mb-4">
-                <button
-                  onClick={handleBackToLocations}
-                  className="flex items-center space-x-2 text-white/80 hover:text-white transition-colors bg-black/30 px-3 py-2 rounded-lg backdrop-blur-sm"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                  <span className="text-sm">{language === 'ar' ? 'المواقع' : 'Locations'}</span>
-                </button>
-              </div>
-              
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight drop-shadow-2xl">
-                {name}
+        {/* Content - positioned at bottom left like other pages */}
+        <div className="absolute inset-0 flex items-end">
+          <div className="px-4 sm:px-6 lg:px-8 pb-8">
+            <div className={`${isRTL ? 'text-right' : 'text-left'}`}>
+              <button
+                onClick={handleBackToLocations}
+                className="inline-flex items-center space-x-2 text-white/80 hover:text-white mb-6 transition-colors"
+              >
+                <ArrowLeft className={`h-4 w-4 ${isRTL ? 'rotate-180 ml-2' : 'mr-2'}`} />
+                <span>{language === 'ar' ? 'العودة إلى المواقع' : 'Back to Locations'}</span>
+              </button>
+
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                {language === 'ar' ? location.nameAr : location.nameEn}
               </h1>
               
+              <p className="text-xl text-white/90 mb-6 max-w-2xl">
+                {language === 'ar' ? location.descriptionAr : location.descriptionEn}
+              </p>
+              
               {legend && (
-                <div className="flex items-center space-x-3">
+                <div className="inline-flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
                   {legend.mainIcon && (
-                    <img src={legend.mainIcon} alt="" className="w-8 h-8 rounded-full border-2 border-white/50" />
+                    <img src={legend.mainIcon} alt="Legend" className="w-6 h-6" />
                   )}
-                  <span className="text-lg text-white/90 font-medium">{legendName}</span>
+                  <span className="text-white font-medium">
+                    {language === 'ar' ? legend.nameAr : legend.nameEn}
+                  </span>
                 </div>
               )}
             </div>
@@ -117,74 +156,68 @@ const LocationDetail: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Description */}
-            <div className="bg-white dark:bg-primary-800 rounded-xl shadow-sm border border-primary-200 dark:border-primary-700 p-8">
+            {/* Location Details */}
+            <div className="bg-white dark:bg-primary-800 rounded-xl shadow-sm p-6">
               <h2 className="text-2xl font-bold text-primary-900 dark:text-white mb-4">
-                {language === 'ar' ? 'حول هذا الموقع' : 'About This Location'}
+                {language === 'ar' ? 'تفاصيل الموقع' : 'Location Details'}
               </h2>
-              <p className={`text-primary-600 dark:text-primary-300 leading-relaxed text-lg ${isRTL ? 'text-right font-arabic' : 'text-left'}`}>
-                {description}
-              </p>
-            </div>
-
-            {/* Legend Information */}
-            {legend && (
-              <div className="bg-white dark:bg-primary-800 rounded-xl shadow-sm border border-primary-200 dark:border-primary-700 p-8">
-                <div className="flex items-center space-x-4 mb-4">
-                  {legend.mainIcon && (
-                    <img src={legend.mainIcon} alt="" className="w-12 h-12 rounded-full border border-primary-300 dark:border-primary-600" />
-                  )}
+              
+              <div className="space-y-4">
+                <div className="flex items-start space-x-3">
+                  <MapPin className="h-5 w-5 text-primary-600 dark:text-primary-400 mt-1" />
                   <div>
-                    <h3 className="text-xl font-bold text-primary-900 dark:text-white">{legendName}</h3>
-                    <p className="text-sm text-primary-500 dark:text-primary-400">
-                      {language === 'ar' ? 'تصنيف الموقع' : 'Location Category'}
+                    <h3 className="font-semibold text-primary-900 dark:text-white">
+                      {language === 'ar' ? 'الإحداثيات' : 'Coordinates'}
+                    </h3>
+                    <p className="text-primary-600 dark:text-primary-400">
+                      {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
                     </p>
                   </div>
                 </div>
-                <p className={`text-primary-600 dark:text-primary-300 leading-relaxed ${isRTL ? 'text-right font-arabic' : 'text-left'}`}>
-                  {legendDescription}
-                </p>
-              </div>
-            )}
 
-            {/* Additional Images Section - Placeholder for future enhancement */}
-            <div className="bg-white dark:bg-primary-800 rounded-xl shadow-sm border border-primary-200 dark:border-primary-700 p-8">
-              <h3 className="text-xl font-bold text-primary-900 dark:text-white mb-4">
-                {language === 'ar' ? 'معرض الصور' : 'Photo Gallery'}
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {location.mainImage && (
-                  <img 
-                    src={location.mainImage} 
-                    alt={name}
-                    className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                  />
+                {legend && (
+                  <div className="flex items-start space-x-3">
+                    <Info className="h-5 w-5 text-primary-600 dark:text-primary-400 mt-1" />
+                    <div>
+                      <h3 className="font-semibold text-primary-900 dark:text-white">
+                        {language === 'ar' ? 'نوع الموقع' : 'Location Type'}
+                      </h3>
+                      <p className="text-primary-600 dark:text-primary-400">
+                        {language === 'ar' ? legend.nameAr : legend.nameEn}
+                      </p>
+                      <p className="text-sm text-primary-500 dark:text-primary-500 mt-1">
+                        {language === 'ar' ? legend.descriptionAr : legend.descriptionEn}
+                      </p>
+                    </div>
+                  </div>
                 )}
-                {/* Placeholder for additional images */}
-                <div className="w-full h-32 bg-primary-100 dark:bg-primary-700 rounded-lg flex items-center justify-center">
-                  <span className="text-primary-400 text-sm">
-                    {language === 'ar' ? 'قريباً' : 'Coming Soon'}
-                  </span>
-                </div>
               </div>
             </div>
+
+            {/* Media Section */}
+            <LocationMediaGallery 
+              photos={location.photos || []} 
+              videos={location.videos || []} 
+              photos360={location.photos360 || []}
+            />
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Quick Actions */}
-            <div className="bg-white dark:bg-primary-800 rounded-xl shadow-sm border border-primary-200 dark:border-primary-700 p-6">
-              <h3 className="text-lg font-semibold text-primary-900 dark:text-white mb-4">
+            <div className="bg-white dark:bg-primary-800 rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-bold text-primary-900 dark:text-white mb-4">
                 {language === 'ar' ? 'إجراءات سريعة' : 'Quick Actions'}
               </h3>
+              
               <div className="space-y-3">
                 <button
                   onClick={handleViewOnMap}
-                  className="w-full flex items-center space-x-3 p-3 bg-accent-100 dark:bg-accent-900/30 text-accent-700 dark:text-accent-300 rounded-lg hover:bg-accent-200 dark:hover:bg-accent-900/50 transition-colors"
+                  className="w-full flex items-center space-x-3 p-3 bg-primary-100 dark:bg-primary-700 text-primary-700 dark:text-primary-300 rounded-lg hover:bg-primary-200 dark:hover:bg-primary-600 transition-colors"
                 >
                   <MapPin className="h-5 w-5" />
                   <span className="font-medium">{language === 'ar' ? 'عرض على الخريطة' : 'View on Map'}</span>
@@ -200,46 +233,27 @@ const LocationDetail: React.FC = () => {
               </div>
             </div>
 
-            {/* Location Details */}
-            <div className="bg-white dark:bg-primary-800 rounded-xl shadow-sm border border-primary-200 dark:border-primary-700 p-6">
-              <h3 className="text-lg font-semibold text-primary-900 dark:text-white mb-4">
-                {language === 'ar' ? 'تفاصيل الموقع' : 'Location Details'}
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-primary-500 dark:text-primary-400">
-                    {language === 'ar' ? 'خط العرض:' : 'Latitude:'}
-                  </span>
-                  <span className="font-medium text-primary-900 dark:text-white">
-                    {location.latitude.toFixed(6)}
-                  </span>
+            {/* Legend Info */}
+            {legend && (
+              <div className="bg-white dark:bg-primary-800 rounded-xl shadow-sm p-6">
+                <h3 className="text-lg font-bold text-primary-900 dark:text-white mb-4">
+                  {language === 'ar' ? 'معلومات الرمز' : 'Legend Information'}
+                </h3>
+                
+                <div className="flex items-center space-x-3 mb-3">
+                  {legend.mainIcon && (
+                    <img src={legend.mainIcon} alt="Legend" className="w-8 h-8" />
+                  )}
+                  <h4 className="font-semibold text-primary-900 dark:text-white">
+                    {language === 'ar' ? legend.nameAr : legend.nameEn}
+                  </h4>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-primary-500 dark:text-primary-400">
-                    {language === 'ar' ? 'خط الطول:' : 'Longitude:'}
-                  </span>
-                  <span className="font-medium text-primary-900 dark:text-white">
-                    {location.longitude.toFixed(6)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-primary-500 dark:text-primary-400">
-                    {language === 'ar' ? 'التصنيف:' : 'Category:'}
-                  </span>
-                  <span className="font-medium text-primary-900 dark:text-white">
-                    {legendName}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-primary-500 dark:text-primary-400">
-                    {language === 'ar' ? 'تاريخ الإنشاء:' : 'Created:'}
-                  </span>
-                  <span className="font-medium text-primary-900 dark:text-white">
-                    {location.createdAt?.toDate?.()?.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US') || 'N/A'}
-                  </span>
-                </div>
+                
+                <p className="text-primary-600 dark:text-primary-400 text-sm">
+                  {language === 'ar' ? legend.descriptionAr : legend.descriptionEn}
+                </p>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
