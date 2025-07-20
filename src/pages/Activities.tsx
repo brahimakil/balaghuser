@@ -26,15 +26,53 @@ const Activities: React.FC = () => {
     });
   }, [activities, selectedActivityType]);
 
-  // Convert activities to calendar events
+  // Convert activities to calendar events with colors based on status
   const calendarEvents = useMemo(() => {
-    return filteredActivities.map(activity => ({
-      id: activity.id,
-      title: language === 'ar' ? activity.nameAr : activity.nameEn,
-      start: activity.date.toDate(),
-      end: new Date(activity.date.toDate().getTime() + activity.durationHours * 60 * 60 * 1000),
-      resource: activity
-    }));
+    return filteredActivities.map(activity => {
+      let startDate;
+      let endDate;
+      
+      try {
+        // Handle different date formats
+        if (activity.date?.toDate) {
+          startDate = activity.date.toDate();
+        } else if (activity.date) {
+          startDate = new Date(activity.date);
+        } else {
+          startDate = new Date(); // fallback to today
+        }
+        
+        endDate = new Date(startDate.getTime() + (activity.durationHours || 1) * 60 * 60 * 1000);
+        
+        return {
+          id: activity.id,
+          title: language === 'ar' ? activity.nameAr : activity.nameEn,
+          start: startDate,
+          end: endDate,
+          resource: activity,
+          // Add custom styling based on activity status
+          style: {
+            backgroundColor: activity.isActive ? '#10b981' : '#f59e0b', // Green for active, Orange for inactive
+            borderColor: activity.isActive ? '#059669' : '#d97706',
+            color: 'white'
+          }
+        };
+      } catch (error) {
+        console.error('Date parsing error for activity:', activity.id, error);
+        return {
+          id: activity.id,
+          title: language === 'ar' ? activity.nameAr : activity.nameEn,
+          start: new Date(),
+          end: new Date(Date.now() + 60 * 60 * 1000), // 1 hour duration
+          resource: activity,
+          style: {
+            backgroundColor: activity.isActive ? '#10b981' : '#f59e0b',
+            borderColor: activity.isActive ? '#059669' : '#d97706',
+            color: 'white'
+          }
+        };
+      }
+    });
   }, [filteredActivities, language]);
 
   const handleViewActivity = (activityId: string) => {
@@ -46,24 +84,68 @@ const Activities: React.FC = () => {
   };
 
   const formatDate = (timestamp: any) => {
-    if (!timestamp) return '';
-    const date = timestamp.toDate();
-    return date.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    if (!timestamp) return 'Invalid date';
+    
+    try {
+      let date;
+      if (timestamp.toDate) {
+        date = timestamp.toDate();
+      } else {
+        date = new Date(timestamp);
+      }
+      
+      return date.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      return 'Invalid date';
+    }
   };
 
   const formatTime = (timeString: string) => {
-    return timeString;
+    return timeString || 'No time specified';
   };
 
   const getStatusText = (isActive: boolean) => {
     return isActive 
       ? { en: 'Active', ar: 'نشط', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' }
-      : { en: 'Inactive', ar: 'غير نشط', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' };
+      : { en: 'Inactive', ar: 'غير نشط', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' };
   };
+
+  const getActivityTypeName = (activityTypeId: string) => {
+    const activityType = activityTypes.find(type => type.id === activityTypeId);
+    if (activityType) {
+      return language === 'ar' ? activityType.nameAr : activityType.nameEn;
+    }
+    return activityTypeId;
+  };
+
+  if (error) {
+    return (
+      <div className="animate-fade-in">
+        <HeroBanner 
+          pageId="activities"
+          fallbackTitle={language === 'ar' ? 'الأنشطة والفعاليات' : 'Activities & Events'}
+          fallbackDescription={language === 'ar' ? 'انضم إلينا في إحياء تراثنا من خلال الأنشطة والفعاليات المتنوعة' : 'Join us in commemorating our heritage through various activities and events'}
+        />
+        
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center py-16 bg-white dark:bg-primary-800 rounded-xl">
+            <CalendarIcon className="h-16 w-16 text-red-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-primary-900 dark:text-white mb-2">
+              {language === 'ar' ? 'خطأ في تحميل الأنشطة' : 'Error Loading Activities'}
+            </h3>
+            <p className="text-primary-600 dark:text-primary-400">
+              {error}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -110,7 +192,7 @@ const Activities: React.FC = () => {
                   </option>
                   {activityTypes.map((type) => (
                     <option key={type.id} value={type.id}>
-                      {type.name}
+                      {language === 'ar' ? type.nameAr : type.nameEn}
                     </option>
                   ))}
                 </select>
@@ -122,6 +204,22 @@ const Activities: React.FC = () => {
                 <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
                   {filteredActivities.length} {language === 'ar' ? 'نشاط' : 'activities'}
                 </span>
+              </div>
+
+              {/* Legend */}
+              <div className="flex items-center space-x-4 text-xs">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-green-500 rounded"></div>
+                  <span className="text-primary-600 dark:text-primary-400">
+                    {language === 'ar' ? 'نشط' : 'Active'}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                  <span className="text-primary-600 dark:text-primary-400">
+                    {language === 'ar' ? 'غير نشط' : 'Inactive'}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -167,6 +265,9 @@ const Activities: React.FC = () => {
                 defaultView={Views.MONTH}
                 className="react-big-calendar-custom"
                 culture={language === 'ar' ? 'ar' : 'en'}
+                eventPropGetter={(event) => ({
+                  style: event.style
+                })}
               />
             </div>
           </div>
@@ -229,11 +330,11 @@ const Activities: React.FC = () => {
                               </div>
                               <div className="flex items-center space-x-2 text-primary-500 dark:text-primary-400">
                                 <Clock className="h-4 w-4" />
-                                <span>{formatTime(activity.time)} ({activity.durationHours}h)</span>
+                                <span>{formatTime(activity.time)} ({activity.durationHours || 1}h)</span>
                               </div>
                               <div className="flex items-center space-x-2 text-primary-500 dark:text-primary-400">
                                 <Tag className="h-4 w-4" />
-                                <span>{activity.activityTypeName}</span>
+                                <span>{getActivityTypeName(activity.activityTypeId)}</span>
                               </div>
                             </div>
                           </div>
