@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { getLocations, getLegends, type Location, type Legend } from '../services/locationsService';
 import { getAllMartyrs, type Martyr } from '../services/martyrsService';
-import { getAllActivities, type Activity } from '../services/activitiesService';
+import { getAllActivities, getAllActivityTypes, type Activity, type ActivityType } from '../services/activitiesService';
 import { getWebsiteSettings, type WebsiteSettings, type PageSettings } from '../services/websiteSettingsService';
 
 // Types
@@ -10,12 +10,14 @@ interface DataState {
   legends: Legend[];
   martyrs: Martyr[];
   activities: Activity[];
+  activityTypes: ActivityType[];
   websiteSettings: WebsiteSettings | null;
   loading: {
     locations: boolean;
     legends: boolean;
     martyrs: boolean;
     activities: boolean;
+    activityTypes: boolean;
     websiteSettings: boolean;
   };
   error: string | null;
@@ -24,6 +26,7 @@ interface DataState {
     legends: number;
     martyrs: number;
     activities: number;
+    activityTypes: number;
     websiteSettings: number;
   };
 }
@@ -34,6 +37,7 @@ type DataAction =
   | { type: 'SET_LEGENDS'; payload: Legend[] }
   | { type: 'SET_MARTYRS'; payload: Martyr[] }
   | { type: 'SET_ACTIVITIES'; payload: Activity[] }
+  | { type: 'SET_ACTIVITY_TYPES'; payload: ActivityType[] }
   | { type: 'SET_WEBSITE_SETTINGS'; payload: WebsiteSettings | null }
   | { type: 'SET_ERROR'; payload: string | null };
 
@@ -42,6 +46,7 @@ interface DataContextType {
   getRandomMartyrs: (count?: number) => Martyr[];
   getTodayActivities: () => Activity[];
   getLegendById: (legendId: string) => Legend | null;
+  getActivityTypeById: (activityTypeId: string) => ActivityType | null;
   getPageSettings: (pageId: string) => PageSettings | null;
   refreshData: (dataType: keyof DataState['loading']) => void;
 }
@@ -52,12 +57,14 @@ const initialState: DataState = {
   legends: [],
   martyrs: [],
   activities: [],
+  activityTypes: [],
   websiteSettings: null,
   loading: {
     locations: false,
     legends: false,
     martyrs: false,
     activities: false,
+    activityTypes: false,
     websiteSettings: false,
   },
   error: null,
@@ -66,6 +73,7 @@ const initialState: DataState = {
     legends: 0,
     martyrs: 0,
     activities: 0,
+    activityTypes: 0,
     websiteSettings: 0,
   },
 };
@@ -108,6 +116,13 @@ const dataReducer = (state: DataState, action: DataAction): DataState => {
         activities: action.payload,
         loading: { ...state.loading, activities: false },
         lastFetched: { ...state.lastFetched, activities: Date.now() },
+      };
+    case 'SET_ACTIVITY_TYPES':
+      return {
+        ...state,
+        activityTypes: action.payload,
+        loading: { ...state.loading, activityTypes: false },
+        lastFetched: { ...state.lastFetched, activityTypes: Date.now() }
       };
     case 'SET_WEBSITE_SETTINGS':
       return {
@@ -167,28 +182,34 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // Auto-fetch essential data on mount
   useEffect(() => {
-    // Fetch website settings first (needed for banners immediately)
-    fetchData('websiteSettings', getWebsiteSettings, 'SET_WEBSITE_SETTINGS');
-    
-    // Fetch legends (needed for map and other components)
-    setTimeout(() => {
-      fetchData('legends', getLegends, 'SET_LEGENDS');
-    }, 50);
-    
-    // Then fetch locations
-    setTimeout(() => {
-      fetchData('locations', getLocations, 'SET_LOCATIONS');
-    }, 100);
+    // Staggered loading for better performance
+    const loadData = async () => {
+      try {
+        // Priority 1: Website Settings (for banner)
+        setTimeout(() => fetchData('websiteSettings', getWebsiteSettings, 'SET_WEBSITE_SETTINGS'), 0);
+        
+        // Priority 2: Martyrs (for dashboard grid)
+        setTimeout(() => fetchData('martyrs', getAllMartyrs, 'SET_MARTYRS'), 300);
+        
+        // Priority 3: Activities and Activity Types (for dashboard grid)
+        setTimeout(() => {
+          fetchData('activities', getAllActivities, 'SET_ACTIVITIES');
+          fetchData('activityTypes', getAllActivityTypes, 'SET_ACTIVITY_TYPES');
+        }, 600);
+        
+        // Priority 4: Locations and Legends (for map)
+        setTimeout(() => {
+          fetchData('locations', getLocations, 'SET_LOCATIONS');
+          fetchData('legends', getLegends, 'SET_LEGENDS');
+        }, 900);
+        
+      } catch (error) {
+        console.error('Error in data loading:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to load data' });
+      }
+    };
 
-    // Fetch martyrs
-    setTimeout(() => {
-      fetchData('martyrs', getAllMartyrs, 'SET_MARTYRS');
-    }, 200);
-
-    // Fetch activities
-    setTimeout(() => {
-      fetchData('activities', getAllActivities, 'SET_ACTIVITIES');
-    }, 300);
+    loadData();
   }, []);
 
   // Helper functions
@@ -222,37 +243,37 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       let activityStartDate: Date;
       
       try {
-        // Use updatedAt as the actual start time instead of date
-        if (activity.updatedAt?.toDate) {
-          activityStartDate = activity.updatedAt.toDate();
-        } else if (activity.updatedAt instanceof Date) {
-          activityStartDate = activity.updatedAt;
-        } else if (typeof activity.updatedAt === 'string') {
-          activityStartDate = new Date(activity.updatedAt);
-        } else if (typeof activity.updatedAt === 'number') {
-          activityStartDate = new Date(activity.updatedAt);
+        // Use createdAt as the actual start time
+        if (activity.createdAt?.toDate) {
+          activityStartDate = activity.createdAt.toDate();
+        } else if (activity.createdAt instanceof Date) {
+          activityStartDate = activity.createdAt;
+        } else if (typeof activity.createdAt === 'string') {
+          activityStartDate = new Date(activity.createdAt);
+        } else if (typeof activity.createdAt === 'number') {
+          activityStartDate = new Date(activity.createdAt);
         } else {
-          console.log('❌ SKIP: Invalid updatedAt format');
+          console.log('❌ SKIP: Invalid createdAt format');
           return false;
         }
         
         if (isNaN(activityStartDate.getTime())) {
-          console.log('❌ SKIP: Invalid updatedAt date');
+          console.log('❌ SKIP: Invalid createdAt date');
           return false;
         }
         
-        // Calculate end date based on updatedAt + duration
+        // Calculate end date based on createdAt + duration
         const durationHours = activity.durationHours || 1;
         const activityEndDate = new Date(activityStartDate.getTime() + (durationHours * 60 * 60 * 1000));
         
-        console.log('Activity times (using updatedAt):', {
+        console.log('Activity times (using createdAt):', {
           actualStart: activityStartDate.toISOString(),
           end: activityEndDate.toISOString(),
           duration: durationHours + ' hours',
           now: now.toISOString()
         });
         
-        // Simple check: is the activity running right now based on updatedAt?
+        // Simple check: is the activity running right now based on createdAt?
         const isCurrentlyRunning = now >= activityStartDate && now <= activityEndDate;
         
         console.log('Time check:', {
@@ -262,9 +283,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         });
         
         if (isCurrentlyRunning) {
-          console.log('✅ INCLUDE: Activity is currently running (from updatedAt)');
+          console.log('✅ INCLUDE: Activity is currently running (from createdAt)');
         } else {
-          console.log('❌ SKIP: Activity is not currently running (from updatedAt)');
+          console.log('❌ SKIP: Activity is not currently running (from createdAt)');
         }
         
         return isCurrentlyRunning;
@@ -289,6 +310,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return state.legends.find(legend => legend.id === legendId) || null;
   };
 
+  const getActivityTypeById = (activityTypeId: string): ActivityType | null => {
+    return state.activityTypes.find(type => type.id === activityTypeId) || null;
+  };
+
   const getPageSettings = (pageId: string): PageSettings | null => {
     if (!state.websiteSettings || !state.websiteSettings.pages) return null;
     return state.websiteSettings.pages[pageId as keyof typeof state.websiteSettings.pages] || null;
@@ -308,6 +333,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       case 'activities':
         fetchData('activities', getAllActivities, 'SET_ACTIVITIES');
         break;
+      case 'activityTypes':
+        fetchData('activityTypes', getAllActivityTypes, 'SET_ACTIVITY_TYPES');
+        break;
       case 'websiteSettings':
         fetchData('websiteSettings', getWebsiteSettings, 'SET_WEBSITE_SETTINGS');
         break;
@@ -320,6 +348,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       getRandomMartyrs,
       getTodayActivities,
       getLegendById,
+      getActivityTypeById,
       getPageSettings,
       refreshData,
     }}>

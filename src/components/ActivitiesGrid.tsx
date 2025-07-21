@@ -3,6 +3,7 @@ import { Calendar, Clock, MapPin, Users, AlertCircle, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { Activity } from '../services/activitiesService';
+import { useData } from '../contexts/DataContext';
 
 interface ActivitiesGridProps {
   activities: Activity[];
@@ -12,6 +13,7 @@ interface ActivitiesGridProps {
 const ActivitiesGrid: React.FC<ActivitiesGridProps> = ({ activities, loading }) => {
   const navigate = useNavigate();
   const { language, isRTL } = useLanguage();
+  const { getActivityTypeById } = useData();
 
   const formatTime = (time: string) => {
     return time;
@@ -119,7 +121,14 @@ const ActivitiesGrid: React.FC<ActivitiesGridProps> = ({ activities, loading }) 
                     <Users className="h-4 w-4" />
                     <span>{language === 'ar' ? 'النوع:' : 'Type:'}</span>
                   </div>
-                  <span className="font-medium">{activity.activityTypeName}</span>
+                  <span className="font-medium">
+                    {(() => {
+                      const activityType = getActivityTypeById(activity.activityTypeId);
+                      return activityType 
+                        ? (language === 'ar' ? activityType.nameAr : activityType.nameEn)
+                        : activity.activityTypeName || 'Unknown';
+                    })()}
+                  </span>
                 </div>
               </div>
               
