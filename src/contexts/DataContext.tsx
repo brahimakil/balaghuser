@@ -222,37 +222,37 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       let activityStartDate: Date;
       
       try {
-        // Parse the start date
-        if (activity.date?.toDate) {
-          activityStartDate = activity.date.toDate();
-        } else if (activity.date instanceof Date) {
-          activityStartDate = activity.date;
-        } else if (typeof activity.date === 'string') {
-          activityStartDate = new Date(activity.date);
-        } else if (typeof activity.date === 'number') {
-          activityStartDate = new Date(activity.date);
+        // Use updatedAt as the actual start time instead of date
+        if (activity.updatedAt?.toDate) {
+          activityStartDate = activity.updatedAt.toDate();
+        } else if (activity.updatedAt instanceof Date) {
+          activityStartDate = activity.updatedAt;
+        } else if (typeof activity.updatedAt === 'string') {
+          activityStartDate = new Date(activity.updatedAt);
+        } else if (typeof activity.updatedAt === 'number') {
+          activityStartDate = new Date(activity.updatedAt);
         } else {
-          console.log('❌ SKIP: Invalid date format');
+          console.log('❌ SKIP: Invalid updatedAt format');
           return false;
         }
         
         if (isNaN(activityStartDate.getTime())) {
-          console.log('❌ SKIP: Invalid date');
+          console.log('❌ SKIP: Invalid updatedAt date');
           return false;
         }
         
-        // Calculate end date
+        // Calculate end date based on updatedAt + duration
         const durationHours = activity.durationHours || 1;
         const activityEndDate = new Date(activityStartDate.getTime() + (durationHours * 60 * 60 * 1000));
         
-        console.log('Activity times:', {
-          start: activityStartDate.toISOString(),
+        console.log('Activity times (using updatedAt):', {
+          actualStart: activityStartDate.toISOString(),
           end: activityEndDate.toISOString(),
           duration: durationHours + ' hours',
           now: now.toISOString()
         });
         
-        // Simple check: is the activity running right now?
+        // Simple check: is the activity running right now based on updatedAt?
         const isCurrentlyRunning = now >= activityStartDate && now <= activityEndDate;
         
         console.log('Time check:', {
@@ -262,9 +262,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         });
         
         if (isCurrentlyRunning) {
-          console.log('✅ INCLUDE: Activity is currently running');
+          console.log('✅ INCLUDE: Activity is currently running (from updatedAt)');
         } else {
-          console.log('❌ SKIP: Activity is not currently running');
+          console.log('❌ SKIP: Activity is not currently running (from updatedAt)');
         }
         
         return isCurrentlyRunning;
