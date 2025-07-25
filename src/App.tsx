@@ -5,6 +5,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import { DataProvider } from './contexts/DataContext';
 import Layout from './components/Layout';
 import ScrollToTop from './components/ScrollToTop';
+import FaviconManager from './components/FaviconManager';
 import Dashboard from './pages/Dashboard';
 import Locations from './pages/Locations';
 import LocationDetail from './pages/LocationDetail';
@@ -19,6 +20,7 @@ function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
+        <FaviconManager />
         <DataProvider>
           <Router>
             <ScrollToTop />

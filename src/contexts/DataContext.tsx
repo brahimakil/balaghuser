@@ -12,7 +12,7 @@ interface DataState {
   activities: Activity[];
   activityTypes: ActivityType[];
   websiteSettings: WebsiteSettings | null;
-  loading: {
+  loading: {  
     locations: boolean;
     legends: boolean;
     martyrs: boolean;
