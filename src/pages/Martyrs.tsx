@@ -1,9 +1,42 @@
-  import React, { useState, useMemo } from 'react';
+  import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Search, Filter, Eye, Heart, Calendar } from 'lucide-react';
+import { User, Search, Filter, Eye, Heart, Calendar, Swords } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useMartyrsData } from '../hooks/useMartyrsData';
+import { getJihadistName, getBirthPlace, getBurialPlace, createMartyrSlug } from '../services/martyrsService';
+import { getAllWars, type War } from '../services/warsService';
 import HeroBanner from '../components/HeroBanner';
+import moment from 'moment';
+
+// Simple Hijri conversion function using algorithmic approximation
+const toHijri = (gregorianDate: Date) => {
+  const momentDate = moment(gregorianDate);
+  const year = momentDate.year();
+  const month = momentDate.month() + 1;
+  const day = momentDate.date();
+  
+  // Algorithmic conversion (approximation)
+  const totalDays = Math.floor((year - 622) * 365.25 + (month - 1) * 30.44 + day);
+  const hijriYear = Math.floor(totalDays / 354.37) + 1;
+  const remainingDays = totalDays - Math.floor((hijriYear - 1) * 354.37);
+  const hijriMonth = Math.ceil(remainingDays / 29.53);
+  const hijriDay = remainingDays - Math.floor((hijriMonth - 1) * 29.53);
+  
+  const hijriMonthsAr = [
+    'محرم', 'صفر', 'ربيع الأول', 'ربيع الثاني', 'جمادى الأولى', 'جمادى الثانية',
+    'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'
+  ];
+  
+  const hijriMonthsEn = [
+    'Muharram', 'Safar', 'Rabi\' al-awwal', 'Rabi\' al-thani', 'Jumada al-awwal', 'Jumada al-thani',
+    'Rajab', 'Sha\'ban', 'Ramadan', 'Shawwal', 'Dhu al-Qi\'dah', 'Dhu al-Hijjah'
+  ];
+  
+  return {
+    ar: `${Math.floor(hijriDay)} ${hijriMonthsAr[Math.min(hijriMonth - 1, 11)]} ${hijriYear}هـ`,
+    en: `${Math.floor(hijriDay)} ${hijriMonthsEn[Math.min(hijriMonth - 1, 11)]} ${hijriYear}H`
+  };
+};
 
 const Martyrs: React.FC = () => {
   const navigate = useNavigate();
@@ -11,9 +44,56 @@ const Martyrs: React.FC = () => {
   const { martyrs, loading, error } = useMartyrsData();
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFamilyStatus, setSelectedFamilyStatus] = useState<string>('');
+  const [selectedWarId, setSelectedWarId] = useState<string>('');
+  const [selectedBirthPlace, setSelectedBirthPlace] = useState<string>(''); // NEW: Birth place filter
+  const [selectedBurialPlace, setSelectedBurialPlace] = useState<string>(''); // NEW: Burial place filter
+  const [wars, setWars] = useState<War[]>([]);
+  const [birthPlaces, setBirthPlaces] = useState<string[]>([]); // NEW: Birth places list
+  const [burialPlaces, setBurialPlaces] = useState<string[]>([]); // NEW: Burial places list
 
-  // Filter martyrs based on search and family status
+  // Load wars data and extract unique places
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load wars
+        const warsData = await getAllWars();
+        setWars(warsData);
+
+        // Extract unique birth places and burial places from martyrs
+        if (martyrs.length > 0) {
+          const uniqueBirthPlaces = new Set<string>();
+          const uniqueBurialPlaces = new Set<string>();
+
+          martyrs.forEach(martyr => {
+            const birthPlace = getBirthPlace(martyr, language);
+            const burialPlace = getBurialPlace(martyr, language);
+            
+            if (birthPlace && birthPlace.trim()) {
+              uniqueBirthPlaces.add(birthPlace.trim());
+            }
+            if (burialPlace && burialPlace.trim()) {
+              uniqueBurialPlaces.add(burialPlace.trim());
+            }
+          });
+
+          setBirthPlaces(Array.from(uniqueBirthPlaces).sort());
+          setBurialPlaces(Array.from(uniqueBurialPlaces).sort());
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
+    loadData();
+  }, [martyrs, language]);
+
+  // Helper function to get war name by ID
+  const getWarName = (warId: string): string => {
+    const war = wars.find(w => w.id === warId);
+    if (!war) return language === 'ar' ? 'غير محدد' : 'Unknown';
+    return language === 'ar' ? war.nameAr : war.nameEn;
+  };
+
+  // Filter martyrs based on search, war, birth place, and burial place
   const filteredMartyrs = useMemo(() => {
     return martyrs.filter(martyr => {
       const matchesSearch = searchTerm === '' || 
@@ -23,18 +103,38 @@ const Martyrs: React.FC = () => {
         (language === 'ar' ? martyr.storyAr : martyr.storyEn)
           .toLowerCase()
           .includes(searchTerm.toLowerCase()) ||
-        (language === 'ar' ? martyr.warNameAr : martyr.warNameEn)
+        getJihadistName(martyr, language)
           .toLowerCase()
           .includes(searchTerm.toLowerCase());
       
-      const matchesFamilyStatus = selectedFamilyStatus === '' || martyr.familyStatus === selectedFamilyStatus;
+      // War filter
+      const matchesWar = selectedWarId === '' || 
+        martyr.warId === selectedWarId ||
+        // Also check legacy war name fields for backward compatibility
+        (language === 'ar' ? martyr.warNameAr : martyr.warNameEn)
+          ?.toLowerCase()
+          .includes(getWarName(selectedWarId).toLowerCase());
       
-      return matchesSearch && matchesFamilyStatus;
+      // NEW: Birth place filter
+      const matchesBirthPlace = selectedBirthPlace === '' || 
+        getBirthPlace(martyr, language).toLowerCase().includes(selectedBirthPlace.toLowerCase());
+      
+      // NEW: Burial place filter
+      const matchesBurialPlace = selectedBurialPlace === '' || 
+        getBurialPlace(martyr, language).toLowerCase().includes(selectedBurialPlace.toLowerCase());
+      
+      return matchesSearch && matchesWar && matchesBirthPlace && matchesBurialPlace;
     });
-  }, [martyrs, searchTerm, selectedFamilyStatus, language]);
+  }, [martyrs, searchTerm, selectedWarId, selectedBirthPlace, selectedBurialPlace, language, wars]);
 
   const handleViewMartyr = (martyrId: string) => {
-    navigate(`/martyrs/${martyrId}`);
+    const martyr = martyrs.find(m => m.id === martyrId);
+    if (martyr) {
+      const slug = createMartyrSlug(martyr);
+      navigate(`/martyrs/${slug}`);
+    } else {
+      navigate(`/martyrs/${martyrId}`); // Fallback
+    }
   };
 
   const getFamilyStatusText = (status: string) => {
@@ -45,10 +145,26 @@ const Martyrs: React.FC = () => {
     return statusMap[status as keyof typeof statusMap]?.[language] || status;
   };
 
-  const formatDate = (timestamp: any) => {
+  // Format date of birth - always use Gregorian (Miladi)
+  const formatDateOfBirth = (timestamp: any) => {
     if (!timestamp) return '';
     const date = timestamp.toDate();
     return date.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US');
+  };
+
+  // Format date of martyrdom - Hijri + Gregorian for both Arabic and English
+  const formatDateOfMartyrdom = (timestamp: any) => {
+    if (!timestamp) return '';
+    const date = timestamp.toDate();
+    const hijriDates = toHijri(date);
+    const gregorianDate = date.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US');
+    
+    return (
+      <div className="text-right">
+        <div className="font-medium text-xs">{language === 'ar' ? hijriDates.ar : hijriDates.en}</div>
+        <div className="text-xs text-primary-500 dark:text-primary-400">{gregorianDate}</div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -89,9 +205,9 @@ const Martyrs: React.FC = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search and Filters */}
         <div className="bg-white dark:bg-primary-800 rounded-xl shadow-sm border border-primary-200 dark:border-primary-700 p-6 mb-8">
-          <div className="flex flex-col lg:flex-row space-y-4 lg:space-y-0 lg:space-x-4">
-            {/* Search */}
-            <div className="flex-1 relative">
+          {/* First Row: Search */}
+          <div className="mb-4">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-400 h-5 w-5" />
               <input
                 type="text"
@@ -101,32 +217,81 @@ const Martyrs: React.FC = () => {
                 className="w-full pl-10 pr-4 py-3 border border-primary-300 dark:border-primary-600 rounded-lg bg-white dark:bg-primary-700 text-primary-900 dark:text-white placeholder-primary-500 dark:placeholder-primary-400 focus:ring-2 focus:ring-accent-500 focus:border-transparent"
               />
             </div>
-            
-            {/* Family Status Filter */}
-            <div className="lg:w-64">
+          </div>
+
+          {/* Second Row: Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* War Filter */}
+            <div>
+              <label className="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2">
+                {language === 'ar' ? 'الحرب' : 'War'}
+              </label>
               <select
-                value={selectedFamilyStatus}
-                onChange={(e) => setSelectedFamilyStatus(e.target.value)}
-                className="w-full px-4 py-3 border border-primary-300 dark:border-primary-600 rounded-lg bg-white dark:bg-primary-700 text-primary-900 dark:text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent"
+                value={selectedWarId}
+                onChange={(e) => setSelectedWarId(e.target.value)}
+                className="w-full px-3 py-2 border border-primary-300 dark:border-primary-600 rounded-lg bg-white dark:bg-primary-700 text-primary-900 dark:text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent text-sm"
               >
                 <option value="">
-                  {language === 'ar' ? 'جميع الحالات' : 'All Status'}
+                  {language === 'ar' ? 'جميع الحروب' : 'All Wars'}
                 </option>
-                <option value="single">
-                  {language === 'ar' ? 'أعزب' : 'Single'}
-                </option>
-                <option value="married">
-                  {language === 'ar' ? 'متزوج' : 'Married'}
-                </option>
+                {wars.map((war) => (
+                  <option key={war.id} value={war.id}>
+                    {language === 'ar' ? war.nameAr : war.nameEn}
+                  </option>
+                ))}
               </select>
             </div>
-            
+
+            {/* NEW: Birth Place Filter */}
+            <div>
+              <label className="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2">
+                {language === 'ar' ? 'مكان الميلاد' : 'Birth Place'}
+              </label>
+              <select
+                value={selectedBirthPlace}
+                onChange={(e) => setSelectedBirthPlace(e.target.value)}
+                className="w-full px-3 py-2 border border-primary-300 dark:border-primary-600 rounded-lg bg-white dark:bg-primary-700 text-primary-900 dark:text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent text-sm"
+              >
+                <option value="">
+                  {language === 'ar' ? 'جميع الأماكن' : 'All Places'}
+                </option>
+                {birthPlaces.map((place) => (
+                  <option key={place} value={place}>
+                    {place}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* NEW: Burial Place Filter */}
+            <div>
+              <label className="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2">
+                {language === 'ar' ? 'مكان الدفن' : 'Burial Place'}
+              </label>
+              <select
+                value={selectedBurialPlace}
+                onChange={(e) => setSelectedBurialPlace(e.target.value)}
+                className="w-full px-3 py-2 border border-primary-300 dark:border-primary-600 rounded-lg bg-white dark:bg-primary-700 text-primary-900 dark:text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent text-sm"
+              >
+                <option value="">
+                  {language === 'ar' ? 'جميع الأماكن' : 'All Places'}
+                </option>
+                {burialPlaces.map((place) => (
+                  <option key={place} value={place}>
+                    {place}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Results Count */}
-            <div className="flex items-center px-4 py-3 bg-primary-50 dark:bg-primary-700/50 rounded-lg">
-              <Filter className="h-5 w-5 text-primary-500 dark:text-primary-400 mr-2" />
-              <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
-                {filteredMartyrs.length} {language === 'ar' ? 'شهيد' : 'martyrs'}
-              </span>
+            <div className="flex items-end">
+              <div className="w-full flex items-center justify-center px-4 py-2 bg-primary-50 dark:bg-primary-700/50 rounded-lg">
+                <Filter className="h-5 w-5 text-primary-500 dark:text-primary-400 mr-2" />
+                <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
+                  {filteredMartyrs.length} {language === 'ar' ? 'شهيد' : 'martyrs'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -146,7 +311,10 @@ const Martyrs: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredMartyrs.map((martyr) => {
               const name = language === 'ar' ? martyr.nameAr : martyr.nameEn;
-              const warName = language === 'ar' ? martyr.warNameAr : martyr.warNameEn;
+              const jihadistName = getJihadistName(martyr, language);
+              const warName = martyr.warId ? getWarName(martyr.warId) : (
+                getJihadistName(martyr, language) // Fallback to old war name fields
+              );
 
               return (
                 <div
@@ -180,18 +348,30 @@ const Martyrs: React.FC = () => {
                       {name}
                     </h3>
                     
+                    {/* Jihadist Name */}
+                    {jihadistName && (
+                      <p className={`text-sm text-accent-600 dark:text-accent-400 mb-3 ${isRTL ? 'text-right font-arabic' : 'text-left'}`}>
+                        "{jihadistName}"
+                      </p>
+                    )}
+                    
                     <div className="space-y-2 text-sm mb-4">
-                      <div className="flex items-center justify-between text-primary-600 dark:text-primary-400">
-                        <span>{language === 'ar' ? 'الحالة:' : 'Status:'}</span>
-                        <span className="font-medium">{getFamilyStatusText(martyr.familyStatus)}</span>
-                      </div>
+                     
                       
-                      <div className="flex items-center justify-between text-primary-600 dark:text-primary-400">
-                        <span>{language === 'ar' ? 'الحرب:' : 'War:'}</span>
-                        <span className="font-medium truncate ml-2 max-w-24" title={warName}>
-                          {warName}
-                        </span>
-                      </div>
+                  
+                      
+                      {/* War name */}
+                      {warName && (
+                        <div className="flex items-center justify-between text-primary-600 dark:text-primary-400">
+                          <div className="flex items-center space-x-1">
+                            <Swords className="h-3 w-3" />
+                            <span>{language === 'ar' ? 'المعركة:' : 'War:'}</span>
+                          </div>
+                          <span className="font-medium text-xs max-w-24 truncate" title={warName}>
+                            {warName}
+                          </span>
+                        </div>
+                      )}
                       
                       {martyr.dateOfShahada && (
                         <div className="flex items-center justify-between text-primary-600 dark:text-primary-400">
@@ -199,7 +379,9 @@ const Martyrs: React.FC = () => {
                             <Calendar className="h-3 w-3" />
                             <span>{language === 'ar' ? 'الشهادة:' : 'Martyrdom:'}</span>
                           </div>
-                          <span className="font-medium text-xs">{formatDate(martyr.dateOfShahada)}</span>
+                          <div className="text-xs">
+                            {formatDateOfMartyrdom(martyr.dateOfShahada)}
+                          </div>
                         </div>
                       )}
                     </div>

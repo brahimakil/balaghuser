@@ -14,7 +14,7 @@ export interface NewsItem {
   descriptionEn: string;
   descriptionAr: string;
   mainImage: string;
-  type: 'live' | 'regular';
+  type: 'live' | 'regular' | 'regularLive';  // Fixed: capital L
   publishDate: any;
   publishTime: string;
   liveDurationHours?: number;
@@ -70,28 +70,34 @@ export const getAllNews = async (): Promise<NewsItem[]> => {
 export const getLiveNews = async (): Promise<NewsItem[]> => {
   try {
     const now = new Date();
-    const q = query(
-      collection(db, 'news'),
-      where('type', '==', 'live')
-    );
     
-    const querySnapshot = await getDocs(q);
+    // Fetch all news and filter client-side for both 'live' and 'regularLive'
+    const querySnapshot = await getDocs(collection(db, 'news'));
     const liveNews: NewsItem[] = [];
     
     querySnapshot.forEach((doc) => {
       const newsItem = { id: doc.id, ...doc.data() } as NewsItem;
       
-      // Check if live news is still active
-      if (newsItem.liveStartTime && newsItem.liveDurationHours) {
-        const startTime = newsItem.liveStartTime.toDate ? newsItem.liveStartTime.toDate() : new Date(newsItem.liveStartTime);
-        const endTime = new Date(startTime.getTime() + newsItem.liveDurationHours * 60 * 60 * 1000);
-        
-        if (now >= startTime && now <= endTime) {
-          liveNews.push(newsItem);
+      console.log('News item type:', newsItem.type); // Debug log
+      
+      if (newsItem.type === 'live') {
+        // Check if live news is still active
+        if (newsItem.liveStartTime && newsItem.liveDurationHours) {
+          const startTime = newsItem.liveStartTime.toDate ? newsItem.liveStartTime.toDate() : new Date(newsItem.liveStartTime);
+          const endTime = new Date(startTime.getTime() + newsItem.liveDurationHours * 60 * 60 * 1000);
+          
+          if (now >= startTime && now <= endTime) {
+            liveNews.push(newsItem);
+          }
         }
+      } else if (newsItem.type === 'regularLive') {  // Fixed: capital L
+        // Include regularLive news directly (backend handles deletion)
+        console.log('Found regularLive news:', newsItem.titleEn); // Debug log
+        liveNews.push(newsItem);
       }
     });
     
+    console.log('Live news fetched:', liveNews); // Debug log to see what's being fetched
     return liveNews;
   } catch (error) {
     console.error('Error fetching live news:', error);
@@ -119,6 +125,10 @@ export const getNewsById = async (id: string): Promise<NewsItem | null> => {
 };
 
 export const isNewsLiveNow = (news: NewsItem): boolean => {
+  if (news.type === 'regularLive') {  // Fixed: capital L
+    return true; // regularLive is always considered "live"
+  }
+  
   if (news.type !== 'live' || !news.liveStartTime || !news.liveDurationHours) {
     return false;
   }

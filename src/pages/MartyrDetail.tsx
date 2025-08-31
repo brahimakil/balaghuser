@@ -1,9 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { User, ArrowLeft, Calendar, Heart, Users, Info, Share, QrCode, Image } from 'lucide-react';
+import { User, ArrowLeft, Calendar, Heart, Users, Info, Share, QrCode, Image, MapPin, Swords, UserCheck } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getMartyrById, type Martyr } from '../services/martyrsService';
+import { getMartyrById, getJihadistName, getBirthPlace, getBurialPlace, extractIdFromSlug, type Martyr } from '../services/martyrsService';
 import MediaGallery from '../components/MediaGallery';
+import moment from 'moment';
+import FriendStoriesSection from '../components/FriendStoriesSection';
+
+// Simple Hijri conversion function using algorithmic approximation
+const toHijri = (gregorianDate: Date) => {
+  const momentDate = moment(gregorianDate);
+  const year = momentDate.year();
+  const month = momentDate.month() + 1;
+  const day = momentDate.date();
+  
+  // Algorithmic conversion (approximation)
+  const totalDays = Math.floor((year - 622) * 365.25 + (month - 1) * 30.44 + day);
+  const hijriYear = Math.floor(totalDays / 354.37) + 1;
+  const remainingDays = totalDays - Math.floor((hijriYear - 1) * 354.37);
+  const hijriMonth = Math.ceil(remainingDays / 29.53);
+  const hijriDay = remainingDays - Math.floor((hijriMonth - 1) * 29.53);
+  
+  const hijriMonthsAr = [
+    'محرم', 'صفر', 'ربيع الأول', 'ربيع الثاني', 'جمادى الأولى', 'جمادى الثانية',
+    'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'
+  ];
+  
+  const hijriMonthsEn = [
+    'Muharram', 'Safar', 'Rabi\' al-awwal', 'Rabi\' al-thani', 'Jumada al-awwal', 'Jumada al-thani',
+    'Rajab', 'Sha\'ban', 'Ramadan', 'Shawwal', 'Dhu al-Qi\'dah', 'Dhu al-Hijjah'
+  ];
+  
+  return {
+    ar: `${Math.floor(hijriDay)} ${hijriMonthsAr[Math.min(hijriMonth - 1, 11)]} ${hijriYear}هـ`,
+    en: `${Math.floor(hijriDay)} ${hijriMonthsEn[Math.min(hijriMonth - 1, 11)]} ${hijriYear}H`
+  };
+};
 
 const MartyrDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,15 +58,13 @@ const MartyrDetail: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // Fetch ONLY this specific martyr directly from Firebase
-        const fetchedMartyr = await getMartyrById(id);
-        if (fetchedMartyr) {
-          setMartyr(fetchedMartyr);
-        } else {
-          setError('Martyr not found');
-        }
-      } catch (err) {
-        console.error('Error fetching martyr:', err);
+        // Extract actual ID from slug if it contains hyphens
+        const actualId = id.includes('-') ? extractIdFromSlug(id) : id;
+        const martyrData = await getMartyrById(actualId);
+        
+        setMartyr(martyrData);
+      } catch (error) {
+        console.error('Error fetching martyr:', error);
         setError('Failed to load martyr data');
       } finally {
         setLoading(false);
@@ -95,7 +125,8 @@ const MartyrDetail: React.FC = () => {
     );
   }
 
-  const formatDate = (timestamp: any) => {
+  // Format date of birth - always use Gregorian (Miladi)
+  const formatDateOfBirth = (timestamp: any) => {
     if (!timestamp) return language === 'ar' ? 'غير محدد' : 'Not specified';
     
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -105,6 +136,30 @@ const MartyrDetail: React.FC = () => {
       day: 'numeric'
     }).format(date);
   };
+
+  // Format date of martyrdom - Hijri + Gregorian for both Arabic and English
+  const formatDateOfMartyrdom = (timestamp: any) => {
+    if (!timestamp) return language === 'ar' ? 'غير محدد' : 'Not specified';
+    
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const hijriDates = toHijri(date);
+    const gregorianDate = new Intl.DateTimeFormat(language === 'ar' ? 'ar-SA' : 'en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }).format(date);
+    
+    return (
+      <div className={language === 'ar' ? 'text-right' : 'text-left'}>
+        <div className="font-semibold">{language === 'ar' ? hijriDates.ar : hijriDates.en}</div>
+        <div className="font-semibold">{gregorianDate}</div>
+      </div>
+    );
+  };
+
+  const jihadistName = getJihadistName(martyr, language);
+  const birthPlace = getBirthPlace(martyr, language);
+  const burialPlace = getBurialPlace(martyr, language);
 
   return (
     <div className="min-h-screen bg-primary-50 dark:bg-primary-900">
@@ -137,10 +192,23 @@ const MartyrDetail: React.FC = () => {
               <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
                 {language === 'ar' ? martyr.nameAr : martyr.nameEn}
               </h1>
-              <div className="flex items-center space-x-4 text-white/90 text-lg">
-                <span>{language === 'ar' ? 'شهيد' : 'Martyr'}</span>
-                <span>•</span>
-                <span>{language === 'ar' ? martyr.warNameAr : martyr.warNameEn}</span>
+              
+              {/* Enhanced subtitle with jihadist name and war information */}
+              <div className="space-y-2 text-white/90 text-lg">
+                {jihadistName && (
+                  <div className="flex items-center space-x-2">
+                    <span>"{jihadistName}"</span>
+                  </div>
+                )}
+                <div className="flex items-center space-x-4">
+                  <span>{language === 'ar' ? 'شهيد' : 'Martyr'}</span>
+                  {martyr.war && (
+                    <>
+                      <span>•</span>
+                      <span>{language === 'ar' ? martyr.war.nameAr : martyr.war.nameEn}</span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -165,10 +233,25 @@ const MartyrDetail: React.FC = () => {
                       {language === 'ar' ? 'تاريخ الميلاد' : 'Date of Birth'}
                     </p>
                     <p className="font-semibold text-primary-900 dark:text-white">
-                      {formatDate(martyr.dob)}
+                      {formatDateOfBirth(martyr.dob)}
                     </p>
                   </div>
                 </div>
+
+                {/* Birth Place */}
+                {birthPlace && (
+                  <div className="flex items-center space-x-3">
+                    <MapPin className="h-5 w-5 text-green-600" />
+                    <div>
+                      <p className="text-sm text-primary-600 dark:text-primary-400">
+                        {language === 'ar' ? 'مكان الميلاد' : 'Place of Birth'}
+                      </p>
+                      <p className="font-semibold text-primary-900 dark:text-white">
+                        {birthPlace}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center space-x-3">
                   <Heart className="h-5 w-5 text-red-600" />
@@ -176,11 +259,26 @@ const MartyrDetail: React.FC = () => {
                     <p className="text-sm text-primary-600 dark:text-primary-400">
                       {language === 'ar' ? 'تاريخ الشهادة' : 'Date of Martyrdom'}
                     </p>
-                    <p className="font-semibold text-primary-900 dark:text-white">
-                      {formatDate(martyr.dateOfShahada)}
-                    </p>
+                    <div className="text-primary-900 dark:text-white">
+                      {formatDateOfMartyrdom(martyr.dateOfShahada)}
+                    </div>
                   </div>
                 </div>
+
+                {/* Burial Place */}
+                {burialPlace && (
+                  <div className="flex items-center space-x-3">
+                    <MapPin className="h-5 w-5 text-purple-600" />
+                    <div>
+                      <p className="text-sm text-primary-600 dark:text-primary-400">
+                        {language === 'ar' ? 'مكان الدفن' : 'Burial Place'}
+                      </p>
+                      <p className="font-semibold text-primary-900 dark:text-white">
+                        {burialPlace}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center space-x-3">
                   <Users className="h-5 w-5 text-blue-600" />
@@ -197,19 +295,74 @@ const MartyrDetail: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-3">
-                  <Info className="h-5 w-5 text-green-600" />
+                {/* Number of Children */}
+                {martyr.familyStatus === 'married' && martyr.numberOfChildren && (
+                  <div className="flex items-center space-x-3">
+                    <UserCheck className="h-5 w-5 text-pink-600" />
+                    <div>
+                      <p className="text-sm text-primary-600 dark:text-primary-400">
+                        {language === 'ar' ? 'عدد الأطفال' : 'Number of Children'}
+                      </p>
+                      <p className="font-semibold text-primary-900 dark:text-white">
+                        {martyr.numberOfChildren}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* War Information Section */}
+            {martyr.war && (
+              <div className="bg-white dark:bg-primary-800 rounded-xl shadow-lg p-6">
+                <div className="flex items-center space-x-3 mb-6">
+                  <Swords className="h-6 w-6 text-accent-600" />
+                  <h2 className="text-2xl font-bold text-primary-900 dark:text-white">
+                    {language === 'ar' ? 'معلومات المعركة' : 'War Information'}
+                  </h2>
+                </div>
+                
+                <div className="space-y-4">
                   <div>
-                    <p className="text-sm text-primary-600 dark:text-primary-400">
-                      {language === 'ar' ? 'اسم الحرب' : 'War Name'}
+                    <h3 className="text-lg font-semibold text-primary-900 dark:text-white mb-2">
+                      ⚔️ {language === 'ar' ? martyr.war.nameAr : martyr.war.nameEn}
+                    </h3>
+                    <p className="text-primary-700 dark:text-primary-300">
+                      {language === 'ar' ? martyr.war.descriptionAr : martyr.war.descriptionEn}
                     </p>
-                    <p className="font-semibold text-primary-900 dark:text-white">
-                      {language === 'ar' ? martyr.warNameAr : martyr.warNameEn}
-                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-primary-600 dark:text-primary-400">
+                        {language === 'ar' ? 'بداية المعركة' : 'War Started'}
+                      </p>
+                      <p className="font-semibold text-primary-900 dark:text-white">
+                        {formatDateOfBirth(martyr.war.startDate)}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-primary-600 dark:text-primary-400">
+                        {language === 'ar' ? 'حالة المعركة' : 'War Status'}
+                      </p>
+                      <p className="font-semibold text-primary-900 dark:text-white">
+                        {martyr.war.endDate ? (
+                          <span>
+                            {language === 'ar' ? 'انتهت في ' : 'Ended on '}
+                            {formatDateOfBirth(martyr.war.endDate)}
+                          </span>
+                        ) : (
+                          <span className="text-red-600 dark:text-red-400">
+                            🔴 {language === 'ar' ? 'مستمرة' : 'Ongoing'}
+                          </span>
+                        )}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Story Section */}
             <div className="bg-white dark:bg-primary-800 rounded-xl shadow-lg p-6">
@@ -235,6 +388,12 @@ const MartyrDetail: React.FC = () => {
                 videos={martyr.videos || []} 
               />
             </div>
+
+            {/* Friend Stories Section - NEW */}
+            <FriendStoriesSection 
+              martyrId={martyr.id}
+              martyrName={language === 'ar' ? martyr.nameAr : martyr.nameEn}
+            />
           </div>
 
           {/* Sidebar */}

@@ -1,30 +1,64 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Calendar as CalendarIcon, List, Filter, Eye, Clock, Users, Tag } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Calendar as CalendarIcon, List, Filter, Eye, Clock, Users, Tag, Lock, Share } from 'lucide-react';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
 import moment from 'moment';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useActivitiesData } from '../hooks/useActivitiesData';
 import HeroBanner from '../components/HeroBanner';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import { getAllVillages, type Village } from '../services/villagesService';
 
 const localizer = momentLocalizer(moment);
 
 const Activities: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams(); // Move this BEFORE using it
   const { language, isRTL } = useLanguage();
   const { activities, activityTypes, loading, error } = useActivitiesData();
   
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
-  const [selectedActivityType, setSelectedActivityType] = useState<string>('');
+  // NOW you can use searchParams:
+  const [selectedActivityType, setSelectedActivityType] = useState<string>(searchParams.get('type') || '');
+  const [selectedVillage, setSelectedVillage] = useState<string>(searchParams.get('village') || '');
+  const [villages, setVillages] = useState<Village[]>([]);
+
+  useEffect(() => {
+    const loadVillages = async () => {
+      const villagesData = await getAllVillages();
+      setVillages(villagesData);
+    };
+    loadVillages();
+  }, []);
+
+  useEffect(() => {
+    // Don't scroll to top when only search params change
+    const handleBeforeUnload = () => {
+      sessionStorage.setItem('scrollPosition', window.scrollY.toString());
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // Restore scroll position
+    const savedPosition = sessionStorage.getItem('scrollPosition');
+    if (savedPosition) {
+      window.scrollTo(0, parseInt(savedPosition));
+      sessionStorage.removeItem('scrollPosition');
+    }
+    
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [searchParams]);
 
   // Filter activities based on activity type
   const filteredActivities = useMemo(() => {
     return activities.filter(activity => {
       const matchesType = selectedActivityType === '' || activity.activityTypeId === selectedActivityType;
-      return matchesType;
+      const matchesVillage = selectedVillage === '' || 
+        (selectedVillage === 'no-village' ? !activity.villageId : activity.villageId === selectedVillage);
+      // NO isPrivate filtering here!
+      return matchesType && matchesVillage;
     });
-  }, [activities, selectedActivityType]);
+  }, [activities, selectedActivityType, selectedVillage]);
 
   // Convert activities to calendar events with colors based on status
   const calendarEvents = useMemo(() => {
@@ -52,7 +86,7 @@ const Activities: React.FC = () => {
           resource: activity,
           // Add custom styling based on activity status
           style: {
-            backgroundColor: activity.isActive ? '#10b981' : '#f59e0b', // Green for active, Orange for inactive
+            backgroundColor: activity.isActive ? '#10b981' : '#f59e0b', // Just green/orange
             borderColor: activity.isActive ? '#059669' : '#d97706',
             color: 'white'
           }
@@ -167,7 +201,7 @@ const Activities: React.FC = () => {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in" style={{ scrollBehavior: 'auto' }}>
       <HeroBanner 
         pageId="activities"
         fallbackTitle={language === 'ar' ? 'الأنشطة والفعاليات' : 'Activities & Events'}
@@ -184,7 +218,13 @@ const Activities: React.FC = () => {
               <div className="sm:w-64">
                 <select
                   value={selectedActivityType}
-                  onChange={(e) => setSelectedActivityType(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedActivityType(e.target.value);
+                    const params = new URLSearchParams(searchParams);
+                    if (e.target.value) params.set('type', e.target.value);
+                    else params.delete('type');
+                    setSearchParams(params);
+                  }}
                   className="w-full px-4 py-3 border border-primary-300 dark:border-primary-600 rounded-lg bg-white dark:bg-primary-700 text-primary-900 dark:text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent"
                 >
                   <option value="">
@@ -193,6 +233,33 @@ const Activities: React.FC = () => {
                   {activityTypes.map((type) => (
                     <option key={type.id} value={type.id}>
                       {language === 'ar' ? type.nameAr : type.nameEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Village Filter */}
+              <div className="sm:w-64">
+                <select
+                  value={selectedVillage}
+                  onChange={(e) => {
+                    setSelectedVillage(e.target.value);
+                    const params = new URLSearchParams(searchParams);
+                    if (e.target.value) params.set('village', e.target.value);
+                    else params.delete('village');
+                    setSearchParams(params);
+                  }}
+                  className="w-full px-4 py-3 border border-primary-300 dark:border-primary-600 rounded-lg bg-white dark:bg-primary-700 text-primary-900 dark:text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent"
+                >
+                  <option value="">
+                    {language === 'ar' ? 'جميع القرى' : 'All Villages'}
+                  </option>
+                  <option value="no-village">
+                    {language === 'ar' ? 'بدون قرية' : 'No Village'}
+                  </option>
+                  {villages.map((village) => (
+                    <option key={village.id} value={village.id}>
+                      {language === 'ar' ? village.nameAr : village.nameEn}
                     </option>
                   ))}
                 </select>
@@ -246,6 +313,33 @@ const Activities: React.FC = () => {
               >
                 <List className="h-4 w-4" />
                 <span>{language === 'ar' ? 'قائمة' : 'List'}</span>
+              </button>
+              <button
+                onClick={async () => {
+                  const url = window.location.href;
+                  const title = language === 'ar' ? 'تقويم الأنشطة' : 'Activities Calendar';
+                  
+                  if (navigator.share) {
+                    try {
+                      await navigator.share({
+                        title: title,
+                        text: language === 'ar' ? 'شاهد الأنشطة المفلترة' : 'View filtered activities',
+                        url: url
+                      });
+                    } catch (error) {
+                      // User cancelled or error occurred
+                      console.log('Share cancelled');
+                    }
+                  } else {
+                    // Fallback for browsers that don't support Web Share API
+                    navigator.clipboard.writeText(url);
+                    alert(language === 'ar' ? 'تم نسخ الرابط!' : 'Link copied!');
+                  }
+                }}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg"
+              >
+                <Share className="h-4 w-4" />
+                <span>{language === 'ar' ? 'مشاركة' : 'Share'}</span>
               </button>
             </div>
           </div>

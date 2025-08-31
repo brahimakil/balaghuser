@@ -282,15 +282,6 @@ const ActivityDetail: React.FC = () => {
                     }
                   </span>
                 </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-primary-600 dark:text-primary-400">
-                    {language === 'ar' ? 'الخصوصية' : 'Privacy'}
-                  </span>
-                  <span className="font-semibold text-blue-600">
-                    {language === 'ar' ? 'عام' : 'Public'}
-                  </span>
-                </div>
               </div>
             </div>
           </div>

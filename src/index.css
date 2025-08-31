@@ -51,6 +51,15 @@
     animation: scrollRight 20s linear infinite;
   }
 
+  /* New continuous scroll animations - made faster */
+  .animate-scroll-ltr-continuous {
+    animation: scrollLeftContinuous 30s linear infinite;
+  }
+
+  .animate-scroll-rtl-continuous {
+    animation: scrollRightContinuous 30s linear infinite;
+  }
+
   /* News ticker hover effects */
   .news-ticker-pause {
     animation-play-state: paused;
@@ -111,9 +120,30 @@
   }
 }
 
+/* New continuous scroll animations */
+@keyframes scrollLeftContinuous {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes scrollRightContinuous {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 /* Pause animation on hover */
 .animate-scroll-ltr:hover,
-.animate-scroll-rtl:hover {
+.animate-scroll-rtl:hover,
+.animate-scroll-ltr-continuous:hover,
+.animate-scroll-rtl-continuous:hover {
   animation-play-state: paused;
 }
 

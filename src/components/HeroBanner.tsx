@@ -45,9 +45,8 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
   const mainImage = (settings && !loading) ? settings.mainImage : fallbackImage;
   const colorOverlay = (settings && !loading) ? settings.colorOverlay : fallbackColor;
 
-  const overlayColorLight = hexToRgba(colorOverlay, 0.2);
-  const overlayColorMedium = hexToRgba(colorOverlay, 0.6);
-  const overlayColorDark = hexToRgba(colorOverlay, 0.8);
+  // NEW: Single uniform overlay
+  const uniformOverlay = hexToRgba(colorOverlay, 0.6); // 60% opacity for good readability
 
   return (
     <div className="relative h-[50vh] md:h-[60vh] lg:h-[70vh] xl:h-[80vh] min-h-[400px] overflow-hidden">
@@ -63,29 +62,18 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
         />
       )}
       
-      {/* Smooth Side Gradients */}
-      <div className="absolute inset-0">
-        {/* Left side gradient */}
+      {/* Conditional Color Overlay - only show if showOverlay is enabled */}
+      {(settings?.showOverlay !== false) && (
         <div 
-          className={`absolute top-0 ${isRTL ? 'right-0' : 'left-0'} bottom-0 w-2/3 md:w-1/2 lg:w-2/5`}
-          style={{ 
-            background: `linear-gradient(to ${isRTL ? 'left' : 'right'}, ${overlayColorDark} 0%, ${overlayColorMedium} 40%, ${overlayColorLight} 80%, transparent 100%)`
-          }}
+          className="absolute inset-0"
+          style={{ backgroundColor: uniformOverlay }}
         />
-        
-        {/* Right side subtle gradient */}
-        <div 
-          className={`absolute top-0 ${isRTL ? 'left-0' : 'right-0'} bottom-0 w-1/3 md:w-1/4`}
-          style={{ 
-            background: `linear-gradient(to ${isRTL ? 'right' : 'left'}, transparent 0%, ${overlayColorLight} 100%)`
-          }}
-        />
-      </div>
+      )}
       
-      {/* Top and bottom subtle gradients for polish */}
+      {/* Optional: Keep subtle gradients for visual polish */}
       <div className="absolute inset-0">
-        <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/30 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/40 to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/20 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/30 to-transparent" />
       </div>
       
       {/* Content positioned to the side */}

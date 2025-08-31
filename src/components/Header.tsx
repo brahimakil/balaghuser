@@ -13,6 +13,9 @@ const Header: React.FC = () => {
   } | null>(null);
   const [logoLoading, setLogoLoading] = useState(true);
   const [logoError, setLogoError] = useState(false);
+  const [menuColors, setMenuColors] = useState({
+    normal: '#64748b', hover: '#3b82f6'
+  });
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage, t, isRTL } = useLanguage();
   const location = useLocation();
@@ -41,6 +44,12 @@ const Header: React.FC = () => {
         } else {
           console.log('No logo URLs found in main settings');
           setLogoError(true);
+        }
+        if (mainSettings) {
+          setMenuColors({
+            normal: mainSettings.headerMenuColor || '#64748b',
+            hover: mainSettings.headerMenuHoverColor || '#3b82f6'
+          });
         }
       } catch (error) {
         console.error('Error fetching logos:', error);
@@ -134,13 +143,12 @@ const Header: React.FC = () => {
               <Link
                 key={item.key}
                 to={item.path}
-                className={`transition-colors whitespace-nowrap ${
-                  isRTL ? 'font-arabic px-1' : ''
-                } ${
-                  isActivePath(item.path)
-                    ? 'text-accent-600 dark:text-accent-400 font-medium'
-                    : 'text-primary-600 dark:text-primary-300 hover:text-accent-600 dark:hover:text-accent-400'
+                className={`font-medium transition-colors relative group ${
+                  isActivePath(item.path) ? '' : ''
                 }`}
+                style={{ 
+                  color: isActivePath(item.path) ? menuColors.hover : menuColors.normal 
+                }}
               >
                 {t(`navigation.${item.key}`)}
               </Link>

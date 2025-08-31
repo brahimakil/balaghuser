@@ -9,6 +9,7 @@ export interface PageSettings {
   descriptionAr: string;
   mainImage: string;
   colorOverlay: string;
+  showOverlay?: boolean; // NEW: Optional boolean for overlay toggle
   createdAt: any;
   updatedAt: any;
 }
@@ -17,6 +18,14 @@ export interface MainSettings {
   lastUpdated: any;
   mainLogoDark: string;
   mainLogoLight: string;
+  // News ticker settings
+  newsTickerColor?: string;
+  newsTickerTextColor?: string;
+  newsTickerFontSize?: number;
+  newsTickerHeight?: number;
+  // NEW: Header menu colors
+  headerMenuColor?: string;
+  headerMenuHoverColor?: string;
 }
 
 export interface WebsiteSettings {
@@ -70,7 +79,7 @@ export const getMainSettings = async (): Promise<MainSettings | null> => {
       return websiteSettings.main;
     }
     
-    // If the structure is flat (logos directly in the document)
+    // If the structure is flat (fields directly in the document)
     const docRef = doc(db, 'websiteSettings', 'main');
     const docSnap = await getDoc(docRef);
     
@@ -78,14 +87,20 @@ export const getMainSettings = async (): Promise<MainSettings | null> => {
       const data = docSnap.data();
       console.log('Direct document data:', data); // Debug log
       
-      // Check if logos are directly in the document
-      if (data.mainLogoDark && data.mainLogoLight) {
-        return {
-          lastUpdated: data.lastUpdated,
-          mainLogoDark: data.mainLogoDark,
-          mainLogoLight: data.mainLogoLight
-        };
-      }
+      // Return all the fields that might be directly in the document
+      return {
+        lastUpdated: data.lastUpdated,
+        mainLogoDark: data.mainLogoDark,
+        mainLogoLight: data.mainLogoLight,
+        // News ticker fields
+        newsTickerColor: data.newsTickerColor,
+        newsTickerTextColor: data.newsTickerTextColor,
+        newsTickerFontSize: data.newsTickerFontSize,
+        newsTickerHeight: data.newsTickerHeight,
+        // NEW: Header menu color fields
+        headerMenuColor: data.headerMenuColor,
+        headerMenuHoverColor: data.headerMenuHoverColor
+      };
     }
     
     return null;

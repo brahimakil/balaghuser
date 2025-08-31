@@ -5,7 +5,7 @@ type Language = 'en' | 'ar';
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  toggleLanguage: () => void; // Add this line
+  toggleLanguage: () => void;
   t: (key: string) => string;
   isRTL: boolean;
 }
@@ -19,11 +19,23 @@ interface Translations {
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguage] = useState<Language>(() => {
     if (typeof window !== 'undefined') {
+      // Force clear old cache and set Arabic as default
       const saved = localStorage.getItem('language');
+      
+      // If no saved language or if we want to force Arabic default
+      if (!saved) {
+        localStorage.setItem('language', 'ar');
+        return 'ar';
+      }
+      
+      // Return saved language if it exists
       if (saved === 'en' || saved === 'ar') return saved;
-      return 'en';
+      
+      // Fallback to Arabic
+      localStorage.setItem('language', 'ar');
+      return 'ar';
     }
-    return 'en';
+    return 'ar';
   });
 
   const [translations, setTranslations] = useState<Translations>({});
@@ -47,7 +59,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
   }, [language]);
 
-  // Add toggleLanguage function
   const toggleLanguage = () => {
     setLanguage(prevLang => prevLang === 'en' ? 'ar' : 'en');
   };

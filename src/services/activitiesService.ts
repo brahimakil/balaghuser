@@ -24,6 +24,7 @@ export interface Activity {
   descriptionEn: string;
   descriptionAr: string;
   activityTypeId: string;
+  villageId?: string; // NEW: Optional village reference
   date: any;
   time: string;
   durationHours: number;

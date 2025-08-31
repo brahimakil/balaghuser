@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, ArrowLeft, Calendar, Info, Share } from 'lucide-react';
+import { MapPin, ArrowLeft, Calendar, Info, Share, ExternalLink } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getLocationById, getLegendById, type Location, type Legend } from '../services/locationsService';
 import LocationMediaGallery from '../components/LocationMediaGallery';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { Icon } from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 const LocationDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -58,8 +61,12 @@ const LocationDetail: React.FC = () => {
     navigate('/locations');
   };
 
-  const handleViewOnMap = () => {
-    navigate(`/?location=${id}`);
+  // Updated: Open Google Maps with specific coordinates
+  const handleViewOnGoogleMaps = () => {
+    if (location) {
+      const googleMapsUrl = `https://www.google.com/maps?q=${location.latitude},${location.longitude}&z=17`;
+      window.open(googleMapsUrl, '_blank');
+    }
   };
 
   const handleShareLocation = () => {
@@ -73,6 +80,30 @@ const LocationDetail: React.FC = () => {
     } else {
       navigator.clipboard.writeText(currentUrl);
       alert(language === 'ar' ? 'تم نسخ الرابط!' : 'Link copied!');
+    }
+  };
+
+  // Create custom marker icon
+  const createLocationIcon = () => {
+    if (legend?.mainIcon) {
+      // Use legend icon if available
+      return new Icon({
+        iconUrl: legend.mainIcon,
+        iconSize: [40, 40],
+        iconAnchor: [20, 40],
+        popupAnchor: [0, -40],
+        className: 'location-marker'
+      });
+    } else {
+      // Default red marker
+      return new Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      });
     }
   };
 
@@ -167,19 +198,8 @@ const LocationDetail: React.FC = () => {
               </h2>
               
               <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <MapPin className="h-5 w-5 text-primary-600 dark:text-primary-400 mt-1" />
-                  <div>
-                    <h3 className="font-semibold text-primary-900 dark:text-white">
-                      {language === 'ar' ? 'الإحداثيات' : 'Coordinates'}
-                    </h3>
-                    <p className="text-primary-600 dark:text-primary-400">
-                      {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
-                    </p>
-                  </div>
-                </div>
 
-                {legend && (
+              {legend && (
                   <div className="flex items-start space-x-3">
                     <Info className="h-5 w-5 text-primary-600 dark:text-primary-400 mt-1" />
                     <div>
@@ -195,6 +215,56 @@ const LocationDetail: React.FC = () => {
                     </div>
                   </div>
                 )}
+                <div className="flex items-start space-x-3">
+                  <MapPin className="h-5 w-5 text-primary-600 dark:text-primary-400 mt-1" />
+                  <div>
+                    <h3 className="font-semibold text-primary-900 dark:text-white">
+                      {language === 'ar' ? 'الإحداثيات' : 'Coordinates'}
+                    </h3>
+                    <p className="text-primary-600 dark:text-primary-400">
+                      {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+                    </p>
+                  </div>
+                </div>
+
+              
+              </div>
+            </div>
+
+            {/* NEW: Location Map */}
+            <div className="bg-white dark:bg-primary-800 rounded-xl shadow-sm p-6">
+              <h2 className="text-2xl font-bold text-primary-900 dark:text-white mb-4">
+                {language === 'ar' ? 'موقع على الخريطة' : 'Location on Map'}
+              </h2>
+              
+              <div className="relative w-full h-96 rounded-xl overflow-hidden shadow-lg border border-primary-200 dark:border-primary-700">
+                <MapContainer
+                  center={[location.latitude, location.longitude]}
+                  zoom={16}
+                  style={{ height: '100%', width: '100%' }}
+                  className="z-0"
+                >
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  
+                  <Marker
+                    position={[location.latitude, location.longitude]}
+                    icon={createLocationIcon()}
+                  >
+                    <Popup>
+                      <div className={`text-center ${isRTL ? 'text-right' : 'text-left'} min-w-48 p-2`}>
+                        <h3 className="font-bold text-lg mb-2 text-gray-800">
+                          {language === 'ar' ? location.nameAr : location.nameEn}
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-4">
+                          {language === 'ar' ? location.descriptionAr : location.descriptionEn}
+                        </p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                </MapContainer>
               </div>
             </div>
 
@@ -208,31 +278,6 @@ const LocationDetail: React.FC = () => {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Quick Actions */}
-            <div className="bg-white dark:bg-primary-800 rounded-xl shadow-sm p-6">
-              <h3 className="text-lg font-bold text-primary-900 dark:text-white mb-4">
-                {language === 'ar' ? 'إجراءات سريعة' : 'Quick Actions'}
-              </h3>
-              
-              <div className="space-y-3">
-                <button
-                  onClick={handleViewOnMap}
-                  className="w-full flex items-center space-x-3 p-3 bg-primary-100 dark:bg-primary-700 text-primary-700 dark:text-primary-300 rounded-lg hover:bg-primary-200 dark:hover:bg-primary-600 transition-colors"
-                >
-                  <MapPin className="h-5 w-5" />
-                  <span className="font-medium">{language === 'ar' ? 'عرض على الخريطة' : 'View on Map'}</span>
-                </button>
-                
-                <button 
-                  onClick={handleShareLocation}
-                  className="w-full flex items-center space-x-3 p-3 bg-accent-100 dark:bg-accent-900/30 text-accent-700 dark:text-accent-300 rounded-lg hover:bg-accent-200 dark:hover:bg-accent-900/50 transition-colors"
-                >
-                  <Share className="h-5 w-5" />
-                  <span className="font-medium">{language === 'ar' ? 'مشاركة الموقع' : 'Share Location'}</span>
-                </button>
-              </div>
-            </div>
-
             {/* Legend Info */}
             {legend && (
               <div className="bg-white dark:bg-primary-800 rounded-xl shadow-sm p-6">
@@ -254,6 +299,32 @@ const LocationDetail: React.FC = () => {
                 </p>
               </div>
             )}
+
+            {/* Quick Actions */}
+            <div className="bg-white dark:bg-primary-800 rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-bold text-primary-900 dark:text-white mb-4">
+                {language === 'ar' ? 'إجراءات سريعة' : 'Quick Actions'}
+              </h3>
+              
+              <div className="space-y-3">
+                {/* Updated: Google Maps button */}
+                <button
+                  onClick={handleViewOnGoogleMaps}
+                  className="w-full flex items-center space-x-3 p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+                >
+                  <ExternalLink className="h-5 w-5" />
+                  <span className="font-medium">{language === 'ar' ? 'فتح في خرائط جوجل' : 'Open in Google Maps'}</span>
+                </button>
+                
+                <button 
+                  onClick={handleShareLocation}
+                  className="w-full flex items-center space-x-3 p-3 bg-accent-100 dark:bg-accent-900/30 text-accent-700 dark:text-accent-300 rounded-lg hover:bg-accent-200 dark:hover:bg-accent-900/50 transition-colors"
+                >
+                  <Share className="h-5 w-5" />
+                  <span className="font-medium">{language === 'ar' ? 'مشاركة الموقع' : 'Share Location'}</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

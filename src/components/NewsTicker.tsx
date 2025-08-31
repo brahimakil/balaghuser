@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getLiveNews, type NewsItem } from '../services/newsService';
+import { getMainSettings } from '../services/websiteSettingsService';
 
 const NewsTicker: React.FC = () => {
   const { language, isRTL } = useLanguage();
   const [liveNews, setLiveNews] = useState<NewsItem[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [tickerSettings, setTickerSettings] = useState({
+    backgroundColor: '#ff0000',
+    textColor: '#ffffff',
+    fontSize: 16,
+    height: 40
+  });
 
   useEffect(() => {
     const fetchLiveNews = async () => {
@@ -20,27 +26,53 @@ const NewsTicker: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // NEW: Fetch ticker settings
   useEffect(() => {
-    if (liveNews.length === 0) return;
-    
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % liveNews.length);
-    }, 5000);
+    const fetchTickerSettings = async () => {
+      try {
+        const settings = await getMainSettings();
+        if (settings) {
+          setTickerSettings({
+            backgroundColor: settings.newsTickerColor || '#ff0000',
+            textColor: settings.newsTickerTextColor || '#ffffff',
+            fontSize: settings.newsTickerFontSize || 16,
+            height: settings.newsTickerHeight || 40
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching ticker settings:', error);
+      }
+    };
 
-    return () => clearInterval(interval);
-  }, [liveNews.length]);
+    fetchTickerSettings();
+  }, []);
 
   if (liveNews.length === 0) {
     return null;
   }
 
-  const currentNews = liveNews[currentIndex];
-  const title = language === 'ar' ? currentNews.titleAr : currentNews.titleEn;
+  // Create the continuous text content - each news item once with more spacing
+  const getNewsContent = () => {
+    return liveNews.map(news => {
+      const title = language === 'ar' ? news.titleAr : news.titleEn;
+      const description = language === 'ar' ? news.descriptionAr : news.descriptionEn;
+      return `${title}: ${description}`;
+    }).join('    •    '); // More spaces around separator
+  };
+
+  const newsContent = getNewsContent();
 
   return (
-    <div className="sticky top-16 z-40 bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white shadow-lg">
+    <div 
+      className="sticky top-16 z-40 text-white shadow-lg"
+      style={{
+        backgroundColor: tickerSettings.backgroundColor,
+        color: tickerSettings.textColor,
+        height: `${tickerSettings.height}px`
+      }}
+    >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center py-2">
+        <div className="flex items-center py-2" style={{ height: `${tickerSettings.height}px` }}>
           {/* LIVE Badge */}
           <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
             <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
@@ -49,24 +81,31 @@ const NewsTicker: React.FC = () => {
             </span>
           </div>
 
-          {/* News Content */}
+          {/* News Content - Continuous Scroll */}
           <div className="flex-1 mx-4 overflow-hidden">
             <div 
-              className={`whitespace-nowrap ${isRTL ? 'animate-scroll-rtl' : 'animate-scroll-ltr'}`}
-              key={currentIndex}
+              className={`whitespace-nowrap ${isRTL ? 'animate-scroll-rtl-continuous' : 'animate-scroll-ltr-continuous'}`}
             >
-              <span className="text-sm md:text-base font-medium">
-                {title}
+              <span 
+                className="font-medium"
+                style={{ fontSize: `${tickerSettings.fontSize}px` }}
+              >
+                {newsContent}
+                {/* Only duplicate for seamless loop if we have content */}
+                {newsContent && liveNews.length > 1 && (
+                  <>
+                    <span className="mx-8">•</span>
+                    {newsContent}
+                  </>
+                )}
               </span>
             </div>
           </div>
 
           {/* News Counter */}
-          {liveNews.length > 1 && (
-            <div className="text-xs text-white/80">
-              {currentIndex + 1}/{liveNews.length}
-            </div>
-          )}
+          <div className="text-xs text-white/80">
+            {liveNews.length} {language === 'ar' ? 'أخبار' : 'News'}
+          </div>
         </div>
       </div>
     </div>

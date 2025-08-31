@@ -9,6 +9,10 @@ import type { Location, Legend } from '../services/locationsService';
 // Import Leaflet CSS
 import 'leaflet/dist/leaflet.css';
 
+// South Lebanon (Janoub) coordinates - focused on South Lebanon
+const SOUTH_LEBANON_CENTER: [number, number] = [33.31, 35.4];
+const DEFAULT_ZOOM = 10.8;
+
 // Custom hook to handle map center updates and location focusing
 const MapController: React.FC<{ center: [number, number]; focusLocation?: Location }> = ({ center, focusLocation }) => {
   const map = useMap();
@@ -17,7 +21,7 @@ const MapController: React.FC<{ center: [number, number]; focusLocation?: Locati
     if (focusLocation) {
       map.setView([focusLocation.latitude, focusLocation.longitude], 15);
     } else {
-      map.setView(center, map.getZoom());
+      map.setView(center, DEFAULT_ZOOM); // Force the zoom level
     }
   }, [center, focusLocation, map]);
 
@@ -57,7 +61,7 @@ const MapLegend: React.FC<{
   const { language } = useLanguage();
 
   return (
-    <div className="absolute bottom-4 right-4 z-[1000] bg-white dark:bg-primary-800 rounded-lg shadow-lg border border-primary-200 dark:border-primary-700 p-4 max-w-xs">
+    <div className="absolute bottom-4 right-4 z-30 bg-white dark:bg-primary-800 rounded-lg shadow-lg border border-primary-200 dark:border-primary-700 p-4 max-w-xs">
       <h3 className="text-sm font-semibold text-primary-900 dark:text-white mb-3">
         {language === 'ar' ? 'دليل المواقع' : 'Location Legend'}
       </h3>
@@ -99,13 +103,14 @@ const MapLegend: React.FC<{
 };
 
 const InteractiveMap: React.FC = () => {
-  // Always call hooks at the top level
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { language, isRTL } = useLanguage();
   const { locations, legends, legendsMap, loading, error } = useMapData();
   const [selectedLegend, setSelectedLegend] = useState<string | null>(null);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([31.5, 35.0]);
+  
+  // Always start with South Lebanon center, don't calculate from locations
+  const [mapCenter] = useState<[number, number]>(SOUTH_LEBANON_CENTER);
 
   // Get focused location from URL params
   const focusLocationId = searchParams.get('location');
@@ -115,15 +120,6 @@ const InteractiveMap: React.FC = () => {
   const filteredLocations = selectedLegend 
     ? locations.filter(loc => loc.legendId === selectedLegend)
     : locations;
-
-  // Calculate map center based on locations
-  useEffect(() => {
-    if (locations.length > 0 && !focusLocation) {
-      const centerLat = locations.reduce((sum, loc) => sum + loc.latitude, 0) / locations.length;
-      const centerLng = locations.reduce((sum, loc) => sum + loc.longitude, 0) / locations.length;
-      setMapCenter([centerLat, centerLng]);
-    }
-  }, [locations, focusLocation]);
 
   // Handle loading state
   if (loading) {
@@ -156,7 +152,7 @@ const InteractiveMap: React.FC = () => {
     <div className="relative w-full h-96 lg:h-[500px] rounded-xl overflow-hidden shadow-lg border border-primary-200 dark:border-primary-700">
       <MapContainer
         center={focusLocation ? [focusLocation.latitude, focusLocation.longitude] : mapCenter}
-        zoom={focusLocation ? 15 : 8}
+        zoom={focusLocation ? 15 : DEFAULT_ZOOM}
         style={{ height: '100%', width: '100%' }}
         className="z-0"
       >

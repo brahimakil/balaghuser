@@ -5,6 +5,9 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { getLiveNews, getAllNews, isNewsLiveNow, type NewsItem } from '../services/newsService';
 import HeroBanner from '../components/HeroBanner';
 
+// Default news image fallback
+const DEFAULT_NEWS_IMAGE = 'https://firebasestorage.googleapis.com/v0/b/balagh-adbc4.firebasestorage.app/o/news%2Ftemp%2Fmain%2Fdefault%20news%20image.png?alt=media&token=8e76cb14-c232-4d1b-9596-d3456dbacd6c';
+
 const News: React.FC = () => {
   const navigate = useNavigate();
   const { language, isRTL } = useLanguage();
@@ -149,17 +152,11 @@ const News: React.FC = () => {
                   >
                     {/* Image */}
                     <div className="relative h-48 bg-primary-100 dark:bg-primary-700">
-                      {news.mainImage ? (
-                        <img 
-                          src={news.mainImage} 
-                          alt={title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Radio className="h-12 w-12 text-primary-400" />
-                        </div>
-                      )}
+                      <img 
+                        src={news.mainImage && news.mainImage.trim() !== '' ? news.mainImage : DEFAULT_NEWS_IMAGE} 
+                        alt={title}
+                        className="w-full h-full object-cover"
+                      />
                       
                       {/* Live Badge */}
                       <div className="absolute top-3 left-3 flex items-center space-x-1 bg-red-600 text-white px-3 py-1 rounded-full">
@@ -234,17 +231,11 @@ const News: React.FC = () => {
                   >
                     {/* Image */}
                     <div className="relative h-48 bg-primary-100 dark:bg-primary-700">
-                      {news.mainImage ? (
-                        <img 
-                          src={news.mainImage} 
-                          alt={title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Radio className="h-12 w-12 text-primary-400" />
-                        </div>
-                      )}
+                      <img 
+                        src={news.mainImage && news.mainImage.trim() !== '' ? news.mainImage : DEFAULT_NEWS_IMAGE} 
+                        alt={title}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
 
                     {/* Content */}

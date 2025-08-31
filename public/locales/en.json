@@ -17,5 +17,9 @@
     "title": "Dashboard",
     "subtitle": "Welcome to your dashboard",
     "overview": "Overview"
+  },
+  "footer": {
+    "copyright": "© 2025 Balagh User. All rights reserved.",
+    "followUs": "Follow Us"
   }
 }
