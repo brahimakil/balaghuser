@@ -23,9 +23,15 @@ export interface MainSettings {
   newsTickerTextColor?: string;
   newsTickerFontSize?: number;
   newsTickerHeight?: number;
-  // NEW: Header menu colors
+  // Header menu colors
   headerMenuColor?: string;
   headerMenuHoverColor?: string;
+  // NEW: Section ordering
+  sectionOrder?: {
+    map: number;
+    martyrs: number;
+    activities: number;
+  };
 }
 
 export interface WebsiteSettings {
@@ -75,7 +81,7 @@ export const getMainSettings = async (): Promise<MainSettings | null> => {
   try {
     const websiteSettings = await getWebsiteSettings();
     if (websiteSettings && websiteSettings.main) {
-      console.log('Main settings:', websiteSettings.main); // Debug log
+      console.log('Main settings:', websiteSettings.main);
       return websiteSettings.main;
     }
     
@@ -85,9 +91,8 @@ export const getMainSettings = async (): Promise<MainSettings | null> => {
     
     if (docSnap.exists()) {
       const data = docSnap.data();
-      console.log('Direct document data:', data); // Debug log
+      console.log('Direct document data:', data);
       
-      // Return all the fields that might be directly in the document
       return {
         lastUpdated: data.lastUpdated,
         mainLogoDark: data.mainLogoDark,
@@ -97,9 +102,11 @@ export const getMainSettings = async (): Promise<MainSettings | null> => {
         newsTickerTextColor: data.newsTickerTextColor,
         newsTickerFontSize: data.newsTickerFontSize,
         newsTickerHeight: data.newsTickerHeight,
-        // NEW: Header menu color fields
+        // Header menu color fields
         headerMenuColor: data.headerMenuColor,
-        headerMenuHoverColor: data.headerMenuHoverColor
+        headerMenuHoverColor: data.headerMenuHoverColor,
+        // NEW: Section order
+        sectionOrder: data.sectionOrder
       };
     }
     

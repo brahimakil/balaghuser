@@ -182,18 +182,102 @@ export const getBurialPlace = (martyr: Martyr, language: 'en' | 'ar'): string =>
   return martyr.burialPlaceEn || martyr.burialPlace || "";
 }; 
 
+// Update the createMartyrSlug function to match backend format:
 export const createMartyrSlug = (martyr: Martyr): string => {
-  const name = (martyr.nameEn || '').toLowerCase()
+  // Clean the main name
+  const mainName = (martyr.nameEn || '').toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
     .replace(/\s+/g, '-')         // Replace spaces with hyphens
     .replace(/-+/g, '-')          // Replace multiple hyphens with single
     .trim();
   
-  return `${name}-${martyr.id}`;
+  // Clean the jihadist name if it exists
+  const jihadistName = (martyr.jihadistNameEn || '').toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-')         // Replace spaces with hyphens
+    .replace(/-+/g, '-')          // Replace multiple hyphens with single
+    .trim();
+  
+  // Combine: nameofmartyr--jihadistname (double dashes)
+  if (jihadistName) {
+    return `${mainName}--${jihadistName}`;
+  } else {
+    return mainName;
+  }
 };
 
-// Helper to extract ID from slug
+// Update helper to extract martyr info from new slug format
+export const extractMartyrFromSlug = (slug: string): { mainName: string; jihadistName?: string } => {
+  const parts = slug.split('--'); // Split on double dashes
+  
+  if (parts.length === 2) {
+    return {
+      mainName: parts[0],
+      jihadistName: parts[1]
+    };
+  } else {
+    return {
+      mainName: slug
+    };
+  }
+};
+
+// New function to find martyr by slug instead of ID
+export const getMartyrBySlug = async (slug: string): Promise<Martyr | null> => {
+  try {
+    const { mainName, jihadistName } = extractMartyrFromSlug(slug);
+    
+    // Get all martyrs and search by name match
+    const martyrs = await getAllMartyrs();
+    
+    const foundMartyr = martyrs.find(martyr => {
+      const martyrMainName = (martyr.nameEn || '').toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim();
+      
+      const martyrJihadistName = (martyr.jihadistNameEn || '').toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim();
+      
+      // Match main name and jihadist name
+      return martyrMainName === mainName && 
+             (jihadistName ? martyrJihadistName === jihadistName : true);
+    });
+    
+    if (foundMartyr) {
+      // Fetch war information if warId exists
+      if (foundMartyr.warId) {
+        try {
+          const war = await getWarById(foundMartyr.warId);
+          foundMartyr.war = war;
+        } catch (error) {
+          console.warn('Error fetching war data for martyr:', error);
+          foundMartyr.war = null;
+        }
+      }
+      
+      return foundMartyr;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching martyr by slug:', error);
+    return null;
+  }
+};
+
+// Keep the old function for backward compatibility
 export const extractIdFromSlug = (slug: string): string => {
+  // Try new format first (double dashes)
+  if (slug.includes('--')) {
+    return slug; // Return the full slug for new format
+  }
+  
+  // Old format fallback (single dash with ID at end)
   const parts = slug.split('-');
-  return parts[parts.length - 1]; // Last part after final hyphen
+  return parts[parts.length - 1];
 }; 

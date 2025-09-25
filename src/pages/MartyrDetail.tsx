@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { User, ArrowLeft, Calendar, Heart, Users, Info, Share, QrCode, Image, MapPin, Swords, UserCheck } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getMartyrById, getJihadistName, getBirthPlace, getBurialPlace, extractIdFromSlug, type Martyr } from '../services/martyrsService';
+import { getMartyrById, getMartyrBySlug, getJihadistName, getBirthPlace, getBurialPlace, extractIdFromSlug, createMartyrSlug, type Martyr } from '../services/martyrsService';
 import MediaGallery from '../components/MediaGallery';
 import moment from 'moment';
 import FriendStoriesSection from '../components/FriendStoriesSection';
@@ -58,9 +58,21 @@ const MartyrDetail: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // Extract actual ID from slug if it contains hyphens
-        const actualId = id.includes('-') ? extractIdFromSlug(id) : id;
-        const martyrData = await getMartyrById(actualId);
+        let martyrData: Martyr | null = null;
+
+        // Try new slug format first (contains double dashes)
+        if (id.includes('--')) {
+          martyrData = await getMartyrBySlug(id);
+        } 
+        // Try old slug format (contains single dash with ID at end)
+        else if (id.includes('-')) {
+          const actualId = extractIdFromSlug(id);
+          martyrData = await getMartyrById(actualId);
+        }
+        // Direct ID lookup (fallback)
+        else {
+          martyrData = await getMartyrById(id);
+        }
         
         setMartyr(martyrData);
       } catch (error) {
