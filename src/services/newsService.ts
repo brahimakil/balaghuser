@@ -14,11 +14,12 @@ export interface NewsItem {
   descriptionEn: string;
   descriptionAr: string;
   mainImage: string;
-  type: 'live' | 'regular' | 'regularLive';  // Fixed: capital L
+  type: 'live' | 'regular' | 'regularLive';
   publishDate: any;
   publishTime: string;
   liveDurationHours?: number;
   liveStartTime?: any;
+  isPressNews?: boolean;  // NEW: Press news flag
   createdAt: any;
   updatedAt: any;
   photos?: MediaFile[];

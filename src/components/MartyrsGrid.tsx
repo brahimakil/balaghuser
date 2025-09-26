@@ -2,7 +2,7 @@ import React from 'react';
 import { Calendar, Heart, User, Eye, Swords, UserCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getJihadistName, type Martyr } from '../services/martyrsService';
+import { getJihadistName, createMartyrSlug, type Martyr } from '../services/martyrsService';
 import moment from 'moment';
 
 interface MartyrsGridProps {
@@ -57,7 +57,16 @@ const MartyrsGrid: React.FC<MartyrsGridProps> = ({ martyrs, loading }) => {
     if (!timestamp) return '';
     const date = timestamp.toDate();
     const hijriDates = toHijri(date);
-    const gregorianDate = date.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US');
+    
+    // For Arabic: show Gregorian date in Arabic format but with Gregorian calendar
+    const gregorianDate = language === 'ar' 
+      ? date.toLocaleDateString('ar', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric',
+          calendar: 'gregory' // Force Gregorian calendar
+        })
+      : date.toLocaleDateString('en-US');
     
     return (
       <div className="text-right text-xs">
@@ -68,7 +77,13 @@ const MartyrsGrid: React.FC<MartyrsGridProps> = ({ martyrs, loading }) => {
   };
 
   const handleViewMartyr = (martyrId: string) => {
-    navigate(`/martyrs/${martyrId}`);
+    const martyr = martyrs.find(m => m.id === martyrId);
+    if (martyr) {
+      const slug = createMartyrSlug(martyr);
+      navigate(`/martyrs/${slug}`);
+    } else {
+      navigate(`/martyrs/${martyrId}`); // Fallback
+    }
   };
 
   if (loading) {

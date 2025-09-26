@@ -157,7 +157,16 @@ const Martyrs: React.FC = () => {
     if (!timestamp) return '';
     const date = timestamp.toDate();
     const hijriDates = toHijri(date);
-    const gregorianDate = date.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US');
+    
+    // For Arabic: show Gregorian date in Arabic format but with Gregorian calendar
+    const gregorianDate = language === 'ar' 
+      ? date.toLocaleDateString('ar', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric',
+          calendar: 'gregory' // Force Gregorian calendar
+        })
+      : date.toLocaleDateString('en-US');
     
     return (
       <div className="text-right">
