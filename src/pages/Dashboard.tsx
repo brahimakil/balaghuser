@@ -8,6 +8,8 @@ import ActivitiesGrid from '../components/ActivitiesGrid';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { getMainSettings } from '../services/websiteSettingsService';
 import { scrollToElement } from '../utils/scrollUtils';
+import DynamicPageSections from '../components/DynamicPageSections';
+import { useDynamicPagesData } from '../hooks/useDynamicPagesData';
 
 const Dashboard: React.FC = () => {
   const { t, isRTL } = useLanguage();
@@ -18,8 +20,11 @@ const Dashboard: React.FC = () => {
   const [sectionOrder, setSectionOrder] = useState({
     map: 1,
     martyrs: 2,
-    activities: 3
+    activities: 3,
+    dynamicPages: 4 // NEW default
   });
+
+  const { dynamicPages, dynamicPagesLoading } = useDynamicPagesData();
 
   // Load section order from website settings
   useEffect(() => {
@@ -106,12 +111,32 @@ const Dashboard: React.FC = () => {
             <ActivitiesGrid activities={activities} loading={activitiesLoading} />
           </div>
         )
+      },
+      // Add dynamic pages section
+      { 
+        id: 'dynamicPages', 
+        order: sectionOrder.dynamicPages || 4, // Default order 4
+        component: (
+          <section key="dynamic-pages" className="py-8">
+            <div className="container mx-auto px-4">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className={`text-3xl font-bold text-primary-900 dark:text-white ${isRTL ? 'text-right font-arabic' : 'text-left'}`}>
+                  {t('dashboard.customPagesTitle')}
+                </h2>
+              </div>
+              <DynamicPageSections 
+                pages={dynamicPages} 
+                loading={dynamicPagesLoading} 
+              />
+            </div>
+          </section>
+        )
       }
     ];
 
     // Sort sections by order
     return sections.sort((a, b) => a.order - b.order);
-  }, [sectionOrder, isRTL, martyrs, martyrsLoading, activities, activitiesLoading]);
+  }, [sectionOrder, isRTL, martyrs, martyrsLoading, activities, activitiesLoading, dynamicPages, dynamicPagesLoading]);
 
   return (
     <div className="animate-fade-in">

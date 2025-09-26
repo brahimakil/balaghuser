@@ -15,6 +15,7 @@ import Activities from './pages/Activities';
 import ActivityDetail from './pages/ActivityDetail';
 import News from './pages/News';
 import NewsDetail from './pages/NewsDetail';
+import DynamicPage from './pages/DynamicPage';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
                 <Route path="activities/:id" element={<ActivityDetail />} />
                 <Route path="news" element={<News />} />
                 <Route path="news/:id" element={<NewsDetail />} />
+                <Route path="pages/:slug" element={<DynamicPage />} />
               </Route>
             </Routes>
           </Router>

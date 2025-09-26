@@ -26,11 +26,12 @@ export interface MainSettings {
   // Header menu colors
   headerMenuColor?: string;
   headerMenuHoverColor?: string;
-  // NEW: Section ordering
+  // Section ordering
   sectionOrder?: {
     map: number;
     martyrs: number;
     activities: number;
+    dynamicPages?: number; // NEW
   };
 }
 

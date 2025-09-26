@@ -4,7 +4,8 @@
     "locations": "Locations", 
     "martyrs": "Martyrs",
     "activities": "Activities",
-    "news": "News"
+    "news": "News",
+    "recents": "Recents"
   },
   "common": {
     "darkMode": "Dark Mode",
@@ -16,7 +17,8 @@
   "dashboard": {
     "title": "Dashboard",
     "subtitle": "Welcome to your dashboard",
-    "overview": "Overview"
+    "overview": "Overview",
+    "customPagesTitle": "Custom Pages"
   },
   "footer": {
     "copyright": "© 2025 Balagh User. All rights reserved.",

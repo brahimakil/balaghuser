@@ -1,10 +1,11 @@
 {
   "navigation": {
-    "dashboard": "لوحة التحكم",
+    "dashboard": "الرئيسية",
     "locations": "المواقع",
-    "martyrs": "الشهداء",
+    "martyrs": "الشهداء", 
     "activities": "الأنشطة",
-    "news": "الأخبار"
+    "news": "الأخبار",
+    "recents": "الأحدث"
   },
   "common": {
     "darkMode": "الوضع المظلم",
@@ -16,7 +17,8 @@
   "dashboard": {
     "title": "لوحة التحكم",
     "subtitle": "مرحباً بك في لوحة التحكم",
-    "overview": "نظرة عامة"
+    "overview": "نظرة عامة",
+    "customPagesTitle": "الصفحات المخصصة"
   },
   "footer": {
     "copyright": "© 2025 بلاغ يوزر. جميع الحقوق محفوظة.",

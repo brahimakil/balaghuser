@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Moon, Sun, Globe } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, X, Moon, Sun, Globe, ChevronDown } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getMainSettings } from '../services/websiteSettingsService';
+import { getDynamicPages, type DynamicPage } from '../services/dynamicPagesService';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -19,6 +20,10 @@ const Header: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage, t, isRTL } = useLanguage();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const [dynamicPages, setDynamicPages] = useState<DynamicPage[]>([]);
+  const [showRecentsDropdown, setShowRecentsDropdown] = useState(false);
 
   // Fetch logos from Firebase
   useEffect(() => {
@@ -62,6 +67,18 @@ const Header: React.FC = () => {
     fetchLogos();
   }, []);
 
+  useEffect(() => {
+    const fetchDynamicPages = async () => {
+      try {
+        const pages = await getDynamicPages();
+        setDynamicPages(pages.slice(0, 5)); // Show only first 5 pages
+      } catch (error) {
+        console.error('Error fetching dynamic pages:', error);
+      }
+    };
+    fetchDynamicPages();
+  }, []);
+
   const navItems = [
     { key: 'dashboard', path: '/' },
     { key: 'locations', path: '/locations' },
@@ -75,6 +92,12 @@ const Header: React.FC = () => {
       return location.pathname === '/';
     }
     return location.pathname.startsWith(path);
+  };
+
+  const handleRecentsClick = (slug: string) => {
+    navigate(`/pages/${slug}`);
+    setShowRecentsDropdown(false);
+    setIsMenuOpen(false);
   };
 
   // Determine which logo to use based on theme
@@ -138,21 +161,67 @@ const Header: React.FC = () => {
           </Link>
 
           {/* Navigation - Desktop */}
-          <nav className={`hidden md:flex ${isRTL ? 'gap-8' : 'space-x-8'}`}>
+          <nav className="hidden md:flex items-center space-x-8">
             {navItems.map((item) => (
               <Link
                 key={item.key}
                 to={item.path}
-                className={`font-medium transition-colors relative group ${
-                  isActivePath(item.path) ? '' : ''
+                className={`px-3 py-2 rounded-lg transition-colors font-medium ${
+                  isActivePath(item.path)
+                    ? 'text-accent-600 dark:text-accent-400'
+                    : 'hover:text-primary-900 dark:hover:text-white'
                 }`}
-                style={{ 
-                  color: isActivePath(item.path) ? menuColors.hover : menuColors.normal 
+                style={{
+                  color: !isActivePath(item.path) ? menuColors.normal : undefined
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActivePath(item.path)) {
+                    e.currentTarget.style.color = menuColors.hover;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActivePath(item.path)) {
+                    e.currentTarget.style.color = menuColors.normal;
+                  }
                 }}
               >
                 {t(`navigation.${item.key}`)}
               </Link>
             ))}
+            
+            {/* Recents Dropdown */}
+            {dynamicPages.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowRecentsDropdown(!showRecentsDropdown)}
+                  className="flex items-center space-x-1 px-3 py-2 rounded-lg transition-colors font-medium hover:text-primary-900 dark:hover:text-white"
+                  style={{ color: menuColors.normal }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = menuColors.hover;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = menuColors.normal;
+                  }}
+                >
+                  <span>{language === 'ar' ? 'الأحدث' : 'Recents'}</span>
+                  <ChevronDown className={`h-4 w-4 transform transition-transform ${showRecentsDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {showRecentsDropdown && (
+                  <div className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-primary-800 rounded-lg shadow-lg border border-primary-200 dark:border-primary-700 py-2 z-50">
+                    {dynamicPages.map((page) => (
+                      <button
+                        key={page.id}
+                        onClick={() => handleRecentsClick(page.slug)}
+                        className="w-full text-left px-4 py-2 text-sm text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-700 transition-colors"
+                      >
+                        {language === 'ar' ? page.titleAr : page.titleEn}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
 
           {/* Controls */}
@@ -217,6 +286,24 @@ const Header: React.FC = () => {
                   {t(`navigation.${item.key}`)}
                 </Link>
               ))}
+              
+              {/* Mobile Recents */}
+              {dynamicPages.length > 0 && (
+                <>
+                  <div className="px-3 py-2 text-sm font-medium text-primary-500 dark:text-primary-400 border-t border-primary-200 dark:border-primary-700 mt-2 pt-4">
+                    {language === 'ar' ? 'الأحدث' : 'Recents'}
+                  </div>
+                  {dynamicPages.map((page) => (
+                    <button
+                      key={page.id}
+                      onClick={() => handleRecentsClick(page.slug)}
+                      className="w-full text-left px-6 py-2 text-sm text-primary-600 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors"
+                    >
+                      {language === 'ar' ? page.titleAr : page.titleEn}
+                    </button>
+                  ))}
+                </>
+              )}
             </nav>
           </div>
         )}
