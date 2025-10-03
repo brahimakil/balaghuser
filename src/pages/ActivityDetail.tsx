@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Calendar, ArrowLeft, Clock, Users, Share, Eye, MapPin } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getActivityById, getActivityTypeById, type Activity, type ActivityType } from '../services/activitiesService';
+import { getActivityById, getActivityBySlug, getActivityTypeById, type Activity, type ActivityType } from '../services/activitiesService';
 import ActivityMediaGallery from '../components/ActivityMediaGallery';
 
 const ActivityDetail: React.FC = () => {
@@ -23,12 +23,24 @@ const ActivityDetail: React.FC = () => {
         setLoading(true);
         setError(null);
         
-        const activityData = await getActivityById(id);
+        console.log('Fetching activity with ID/slug:', id);
+        
+        // Try to fetch by slug first, then fall back to ID
+        let activityData = await getActivityBySlug(id);
+        
+        // If slug lookup fails, try ID lookup (backward compatibility)
         if (!activityData) {
+          console.log('Slug lookup failed, trying ID lookup...');
+          activityData = await getActivityById(id);
+        }
+        
+        if (!activityData) {
+          console.error('No activity found for:', id);
           setError('Activity not found');
           return;
         }
         
+        console.log('Activity found:', activityData.nameEn);
         setActivity(activityData);
         
         // Fetch activity type details

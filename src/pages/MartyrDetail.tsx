@@ -155,16 +155,35 @@ const MartyrDetail: React.FC = () => {
     
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     const hijriDates = toHijri(date);
-    const gregorianDate = new Intl.DateTimeFormat(language === 'ar' ? 'ar-SA' : 'en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    }).format(date);
+    
+    // For Arabic: show Gregorian date in Arabic format but with Gregorian calendar
+    const gregorianDate = language === 'ar' 
+      ? date.toLocaleDateString('ar', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric',
+          calendar: 'gregory' // Force Gregorian calendar
+        })
+      : date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
     
     return (
       <div className={language === 'ar' ? 'text-right' : 'text-left'}>
-        <div className="font-semibold">{language === 'ar' ? hijriDates.ar : hijriDates.en}</div>
-        <div className="font-semibold">{gregorianDate}</div>
+        <div className="mb-1">
+          <span className="text-xs text-primary-500 dark:text-primary-400">
+            {language === 'ar' ? 'هجري:' : 'Hijri:'}
+          </span>
+          <div className="font-semibold">{language === 'ar' ? hijriDates.ar : hijriDates.en}</div>
+        </div>
+        <div>
+          <span className="text-xs text-primary-500 dark:text-primary-400">
+            {language === 'ar' ? 'ميلادي:' : 'Gregorian:'}
+          </span>
+          <div className="font-semibold">{gregorianDate}</div>
+        </div>
       </div>
     );
   };

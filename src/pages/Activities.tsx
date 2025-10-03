@@ -1,13 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Calendar as CalendarIcon, List, Filter, Eye, Clock, Users, Tag, Lock, Share } from 'lucide-react';
+import { Calendar as CalendarIcon, List, Filter, Eye, Clock, Users, Tag, Lock, Share, Navigation } from 'lucide-react';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
 import moment from 'moment';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useActivitiesData } from '../hooks/useActivitiesData';
 import HeroBanner from '../components/HeroBanner';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { getAllVillages, type Village } from '../services/villagesService';
+import { getAllVillages, type Village, createVillageSlug, getVillageBySlug } from '../services/villagesService';
+import { createActivitySlug, createActivityTypeSlug, getActivityTypeBySlug, type Activity } from '../services/activitiesService';
+import { createLocationSlug } from '../services/locationsService';
+import { createNewsSlug } from '../services/newsService';
 
 const localizer = momentLocalizer(moment);
 
@@ -19,17 +22,40 @@ const Activities: React.FC = () => {
   
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   // NOW you can use searchParams:
-  const [selectedActivityType, setSelectedActivityType] = useState<string>(searchParams.get('type') || '');
-  const [selectedVillage, setSelectedVillage] = useState<string>(searchParams.get('village') || '');
   const [villages, setVillages] = useState<Village[]>([]);
+  
+  // Read village and type from URL using slugs
+  const villageSlugParam = searchParams.get('village');
+  const typeSlugParam = searchParams.get('type');
+  
+  const [selectedVillage, setSelectedVillage] = useState<string>('');
+  const [selectedActivityType, setSelectedActivityType] = useState<string>('');
 
+  // Load villages and resolve slug parameters
   useEffect(() => {
-    const loadVillages = async () => {
+    const loadData = async () => {
       const villagesData = await getAllVillages();
       setVillages(villagesData);
+      
+      // If village slug in URL, find the actual village ID
+      if (villageSlugParam) {
+        const village = await getVillageBySlug(villageSlugParam);
+        if (village && village.id) {
+          setSelectedVillage(village.id);
+        }
+      }
+      
+      // If activity type slug in URL, find the actual type ID
+      if (typeSlugParam) {
+        const activityType = await getActivityTypeBySlug(typeSlugParam);
+        if (activityType && activityType.id) {
+          setSelectedActivityType(activityType.id);
+        }
+      }
     };
-    loadVillages();
-  }, []);
+    
+    loadData();
+  }, [villageSlugParam, typeSlugParam]);
 
   useEffect(() => {
     // Don't scroll to top when only search params change
@@ -49,13 +75,18 @@ const Activities: React.FC = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [searchParams]);
 
-  // Filter activities based on activity type
+  // Filter activities based on activity type and village
   const filteredActivities = useMemo(() => {
     return activities.filter(activity => {
       const matchesType = selectedActivityType === '' || activity.activityTypeId === selectedActivityType;
-      const matchesVillage = selectedVillage === '' || 
-        (selectedVillage === 'no-village' ? !activity.villageId : activity.villageId === selectedVillage);
-      // NO isPrivate filtering here!
+      
+      // Village filtering logic:
+      // - If no village selected (default): show ONLY activities with no village (public activities)
+      // - If village selected: show ONLY activities for that specific village
+      const matchesVillage = selectedVillage === '' 
+        ? (!activity.villageId || activity.villageId === '') // Default: show only public activities
+        : activity.villageId === selectedVillage; // Village selected: show only that village's activities
+      
       return matchesType && matchesVillage;
     });
   }, [activities, selectedActivityType, selectedVillage]);
@@ -76,6 +107,20 @@ const Activities: React.FC = () => {
           startDate = new Date(); // fallback to today
         }
         
+        // Parse and apply the time from activity.time (e.g., "10:00", "14:30")
+        if (activity.time) {
+          const timeParts = activity.time.split(':');
+          if (timeParts.length >= 2) {
+            const hours = parseInt(timeParts[0], 10);
+            const minutes = parseInt(timeParts[1], 10);
+            
+            if (!isNaN(hours) && !isNaN(minutes)) {
+              startDate.setHours(hours, minutes, 0, 0);
+            }
+          }
+        }
+        
+        // Calculate end time based on start time + duration
         endDate = new Date(startDate.getTime() + (activity.durationHours || 1) * 60 * 60 * 1000);
         
         return {
@@ -109,12 +154,14 @@ const Activities: React.FC = () => {
     });
   }, [filteredActivities, language]);
 
-  const handleViewActivity = (activityId: string) => {
-    navigate(`/activities/${activityId}`);
+  const handleViewActivity = (activity: Activity) => {
+    const slug = createActivitySlug(activity);
+    navigate(`/activities/${slug}`);
   };
 
   const handleSelectEvent = (event: any) => {
-    handleViewActivity(event.id);
+    // Pass the full activity object from event.resource
+    handleViewActivity(event.resource);
   };
 
   const formatDate = (timestamp: any) => {
@@ -221,8 +268,18 @@ const Activities: React.FC = () => {
                   onChange={(e) => {
                     setSelectedActivityType(e.target.value);
                     const params = new URLSearchParams(searchParams);
-                    if (e.target.value) params.set('type', e.target.value);
-                    else params.delete('type');
+                    
+                    if (e.target.value) {
+                      // Find the activity type and create slug for URL
+                      const activityType = activityTypes.find(t => t.id === e.target.value);
+                      if (activityType) {
+                        const typeSlug = createActivityTypeSlug(activityType);
+                        params.set('type', typeSlug);
+                      }
+                    } else {
+                      params.delete('type');
+                    }
+                    
                     setSearchParams(params);
                   }}
                   className="w-full px-4 py-3 border border-primary-300 dark:border-primary-600 rounded-lg bg-white dark:bg-primary-700 text-primary-900 dark:text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent"
@@ -245,8 +302,20 @@ const Activities: React.FC = () => {
                   onChange={(e) => {
                     setSelectedVillage(e.target.value);
                     const params = new URLSearchParams(searchParams);
-                    if (e.target.value) params.set('village', e.target.value);
-                    else params.delete('village');
+                    
+                    if (e.target.value) {
+                      // Find the village and create slug for URL
+                      const village = villages.find(v => v.id === e.target.value);
+                      if (village) {
+                        const villageSlug = createVillageSlug(village);
+                        params.set('village', villageSlug);
+                      } else if (e.target.value === 'no-village') {
+                        params.set('village', 'no-village');
+                      }
+                    } else {
+                      params.delete('village');
+                    }
+                    
                     setSearchParams(params);
                   }}
                   className="w-full px-4 py-3 border border-primary-300 dark:border-primary-600 rounded-lg bg-white dark:bg-primary-700 text-primary-900 dark:text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent"
@@ -437,7 +506,7 @@ const Activities: React.FC = () => {
                       
                       <div className="mt-4 lg:mt-0 lg:ml-6">
                         <button
-                          onClick={() => handleViewActivity(activity.id)}
+                          onClick={() => handleViewActivity(activity)}
                           className="flex items-center space-x-2 px-6 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors"
                         >
                           <Eye className="h-4 w-4" />

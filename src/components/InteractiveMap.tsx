@@ -128,7 +128,7 @@ const SectorsFilter: React.FC<{
       <div className="flex items-center justify-between mb-4 md:mb-6">
         <h3 className="text-sm md:text-lg font-bold text-primary-900 dark:text-white flex items-center space-x-1 md:space-x-2">
           <Filter className="h-4 w-4 md:h-5 md:w-5 text-accent-600" />
-          <span>{language === 'ar' ? 'تصفية القطاعات' : 'Filter Sectors'}</span>
+          <span>{language === 'ar' ? 'تصفية المسار' : 'Filter Path'}</span>
         </h3>
         <button
           onClick={onClose}
@@ -161,7 +161,7 @@ const SectorsFilter: React.FC<{
         <br />
         <br />
         <label className="block text-xs md:text-sm font-semibold text-primary-700 dark:text-primary-300 mb-2 md:mb-3">
-          {language === 'ar' ? 'اختر القطاعات' : 'Choose Sectors'}
+          {language === 'ar' ? 'اختر المسار' : 'Choose Path'}
         </label>
         <div className="space-y-2 md:space-y-3 max-h-48 md:max-h-64 overflow-y-auto">
           {sectors.map((sector) => (
@@ -248,8 +248,12 @@ const InteractiveMap: React.FC = () => {
         const sector = sectors.find(s => s.id === sectorId);
         if (sector) {
           sector.locationPrayerTimings.forEach(lpt => {
+            // ✅ NEW: Include always_visible locations
+            if (lpt.prayerTiming === 'always_visible') {
+              allowedLocationIds.add(lpt.locationId);
+            }
             // Filter by prayer timing if selected
-            if (!selectedPrayerTiming || lpt.prayerTiming === selectedPrayerTiming) {
+            else if (!selectedPrayerTiming || lpt.prayerTiming === selectedPrayerTiming) {
               allowedLocationIds.add(lpt.locationId);
             }
           });
@@ -311,7 +315,7 @@ const InteractiveMap: React.FC = () => {
         >
           <Filter className="h-5 w-5" />
           <span>
-            {language === 'ar' ? 'اختر القطاعات' : 'Choose Sectors'}
+            {language === 'ar' ? 'اختر المسار' : 'Choose Path'}
           </span>
         </button>
         
@@ -320,7 +324,7 @@ const InteractiveMap: React.FC = () => {
           <div className="bg-white dark:bg-primary-800 px-4 py-2 rounded-lg shadow-lg border border-primary-200 dark:border-primary-700">
             <span className="text-sm font-medium text-accent-600 dark:text-accent-400">
               {language === 'ar' ? 'مفعل' : 'Active'} 
-              {selectedSectors.length > 0 && ` • ${selectedSectors.length} ${language === 'ar' ? 'قطاع' : 'sectors'}`}
+              {selectedSectors.length > 0 && ` • ${selectedSectors.length} ${language === 'ar' ? 'مسار' : 'paths'}`}
               {selectedPrayerTiming && ` • ${selectedPrayerTiming === 'before_dohor' ? (language === 'ar' ? 'قبل الظهر' : 'Before Dohor') : (language === 'ar' ? 'بعد الظهر' : 'After Dohor')}`}
             </span>
           </div>
@@ -333,7 +337,7 @@ const InteractiveMap: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-primary-900 dark:text-white flex items-center space-x-2">
               <Filter className="h-5 w-5 text-accent-600" />
-              <span>{language === 'ar' ? 'تصفية القطاعات' : 'Filter Sectors'}</span>
+              <span>{language === 'ar' ? 'تصفية المسار' : 'Filter Path'}</span>
             </h3>
             <button
               onClick={() => setShowSectorsFilter(false)}
@@ -363,14 +367,14 @@ const InteractiveMap: React.FC = () => {
             {/* Sectors with Search */}
             <div>
               <label className="block text-sm font-semibold text-primary-700 dark:text-primary-300 mb-3">
-                {language === 'ar' ? 'اختر القطاعات' : 'Choose Sectors'}
+                {language === 'ar' ? 'اختر المسار' : 'Choose Path'}
               </label>
               
               {/* Search Bar */}
               <div className="relative mb-4">
                 <input
                   type="text"
-                  placeholder={language === 'ar' ? 'البحث في القطاعات...' : 'Search sectors...'}
+                  placeholder={language === 'ar' ? 'البحث في المسارات...' : 'Search paths...'}
                   value={sectorSearch}
                   onChange={(e) => setSectorSearch(e.target.value)}
                   className="w-full px-4 py-2 pr-10 border-2 border-primary-300 dark:border-primary-600 rounded-lg bg-white dark:bg-primary-700 text-primary-900 dark:text-white focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
@@ -407,7 +411,7 @@ const InteractiveMap: React.FC = () => {
                   ))
                 ) : (
                   <p className="text-center text-primary-500 dark:text-primary-400 py-4">
-                    {language === 'ar' ? 'لا توجد قطاعات مطابقة' : 'No matching sectors'}
+                    {language === 'ar' ? 'لا توجد مسارات مطابقة' : 'No matching paths'}
                   </p>
                 )}
               </div>
@@ -505,7 +509,10 @@ const InteractiveMap: React.FC = () => {
                       </div>
                     )}
                     <button
-                      onClick={() => navigate(`/locations/${location.id}`)}
+                      onClick={() => {
+                        const slug = createLocationSlug(location);
+                        navigate(`/locations/${slug}`);
+                      }}
                       className="w-full px-3 py-2 bg-accent-600 text-white text-sm font-medium rounded-lg hover:bg-accent-700 transition-colors"
                     >
                       {language === 'ar' ? 'عرض المزيد' : 'View More'}

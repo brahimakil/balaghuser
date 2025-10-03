@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, Clock, Radio, Share, Eye } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getNewsById, isNewsLiveNow, type NewsItem } from '../services/newsService';
+import { getNewsById, getNewsBySlug, isNewsLiveNow, type NewsItem } from '../services/newsService';
 import NewsMediaGallery from '../components/NewsMediaGallery';
 
 const NewsDetail: React.FC = () => {
@@ -21,7 +21,14 @@ const NewsDetail: React.FC = () => {
         setLoading(true);
         setError(null);
         
-        const newsData = await getNewsById(id);
+        // Try to fetch by slug first, then fall back to ID
+        let newsData = await getNewsBySlug(id);
+        
+        // If slug lookup fails, try ID lookup (backward compatibility)
+        if (!newsData) {
+          newsData = await getNewsById(id);
+        }
+        
         if (!newsData) {
           setError('News not found');
           return;

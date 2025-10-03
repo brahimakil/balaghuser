@@ -140,3 +140,65 @@ export const isNewsLiveNow = (news: NewsItem): boolean => {
   
   return now >= startTime && now <= endTime;
 }; 
+
+// Improved slug generation with title + description
+export const createNewsSlug = (news: NewsItem): string => {
+  // Get title part
+  const titlePart = (news.titleEn || news.titleAr || '').toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+  
+  // Get description part (first few words)
+  const descPart = (news.descriptionEn || news.descriptionAr || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
+    .split('-')
+    .slice(0, 3) // Take first 3 words
+    .join('-');
+  
+  // Combine title and description with double dash
+  if (titlePart && descPart) {
+    return `${titlePart}--${descPart}`;
+  } else if (titlePart) {
+    return titlePart;
+  } else if (descPart) {
+    return descPart;
+  } else if (news.id) {
+    return `news-${news.id.substring(0, 8)}`;
+  } else {
+    return 'news';
+  }
+};
+
+export const getNewsBySlug = async (slug: string): Promise<NewsItem | null> => {
+  try {
+    console.log('Looking for news with slug:', slug);
+    
+    // Get all news and find by matching slug
+    const allNews = await getAllNews();
+    
+    console.log('Total news found:', allNews.length);
+    
+    const foundNews = allNews.find(news => {
+      const newsSlug = createNewsSlug(news);
+      console.log(`Comparing: "${newsSlug}" with "${slug}" for news:`, news.titleEn);
+      return newsSlug === slug;
+    });
+    
+    if (foundNews) {
+      console.log('Found matching news:', foundNews.titleEn);
+    } else {
+      console.log('No matching news found for slug:', slug);
+    }
+    
+    return foundNews || null;
+  } catch (error) {
+    console.error('Error fetching news by slug:', error);
+    return null;
+  }
+}; 

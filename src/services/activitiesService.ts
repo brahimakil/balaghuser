@@ -166,3 +166,98 @@ export const getActivityById = async (id: string): Promise<Activity | null> => {
     return null;
   }
 }; 
+
+// Improved slug generation with name + description
+export const createActivitySlug = (activity: Activity): string => {
+  // Get name part
+  const namePart = (activity.nameEn || activity.nameAr || '').toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+  
+  // Get description part (first few words)
+  const descPart = (activity.descriptionEn || activity.descriptionAr || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
+    .split('-')
+    .slice(0, 3) // Take first 3 words
+    .join('-');
+  
+  // Combine name and description with double dash
+  if (namePart && descPart) {
+    return `${namePart}--${descPart}`;
+  } else if (namePart) {
+    return namePart;
+  } else if (descPart) {
+    return descPart;
+  } else if (activity.id) {
+    return `activity-${activity.id.substring(0, 8)}`;
+  } else {
+    return 'activity';
+  }
+};
+
+export const getActivityBySlug = async (slug: string): Promise<Activity | null> => {
+  try {
+    console.log('Looking for activity with slug:', slug);
+    
+    // Get all activities and find by matching slug
+    const activities = await getAllActivities();
+    
+    console.log('Total activities found:', activities.length);
+    
+    const foundActivity = activities.find(activity => {
+      const activitySlug = createActivitySlug(activity);
+      console.log(`Comparing: "${activitySlug}" with "${slug}" for activity:`, activity.nameEn);
+      return activitySlug === slug;
+    });
+    
+    if (foundActivity) {
+      console.log('Found matching activity:', foundActivity.nameEn);
+    } else {
+      console.log('No matching activity found for slug:', slug);
+    }
+    
+    return foundActivity || null;
+  } catch (error) {
+    console.error('Error fetching activity by slug:', error);
+    return null;
+  }
+}; 
+
+// Simplified slug generation for ActivityType (name only, no description needed)
+export const createActivityTypeSlug = (activityType: ActivityType): string => {
+  const name = (activityType.nameEn || activityType.nameAr || '').toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+  
+  return name || (activityType.id ? `activity-type-${activityType.id.substring(0, 8)}` : 'activity-type');
+};
+
+export const getActivityTypeBySlug = async (slug: string): Promise<ActivityType | null> => {
+  try {
+    const activityTypes = await getAllActivityTypes();
+    
+    const foundType = activityTypes.find(type => {
+      const typeSlug = createActivityTypeSlug(type);
+      return typeSlug === slug;
+    });
+    
+    // If slug lookup fails, try direct ID lookup for backward compatibility
+    if (!foundType) {
+      const typeById = activityTypes.find(t => t.id === slug);
+      return typeById || null;
+    }
+    
+    return foundType || null;
+  } catch (error) {
+    console.error('Error fetching activity type by slug:', error);
+    return null;
+  }
+}; 

@@ -66,3 +66,36 @@ export const getVillageName = async (villageId: string): Promise<{nameEn: string
   }
   return null;
 };
+
+// Simplified slug generation for villages (name only, no description needed)
+export const createVillageSlug = (village: Village): string => {
+  const name = (village.nameEn || village.nameAr || '').toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+  
+  return name || (village.id ? `village-${village.id.substring(0, 8)}` : 'village');
+};
+
+export const getVillageBySlug = async (slug: string): Promise<Village | null> => {
+  try {
+    const villages = await getAllVillages();
+    
+    const foundVillage = villages.find(village => {
+      const villageSlug = createVillageSlug(village);
+      return villageSlug === slug;
+    });
+    
+    // If slug lookup fails, try direct ID lookup for backward compatibility
+    if (!foundVillage) {
+      const villageById = villages.find(v => v.id === slug);
+      return villageById || null;
+    }
+    
+    return foundVillage || null;
+  } catch (error) {
+    console.error('Error fetching village by slug:', error);
+    return null;
+  }
+};

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { Activity } from '../services/activitiesService';
 import { useData } from '../contexts/DataContext';
+import { createActivitySlug } from '../services/activitiesService';
 
 interface ActivitiesGridProps {
   activities: Activity[];
@@ -25,8 +26,9 @@ const ActivitiesGrid: React.FC<ActivitiesGridProps> = ({ activities, loading }) 
       : { en: 'Inactive', ar: 'غير نشط', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' };
   };
 
-  const handleViewActivity = (activityId: string) => {
-    navigate(`/activities/${activityId}`);
+  const handleViewActivity = (activity: Activity) => {
+    const slug = createActivitySlug(activity);
+    navigate(`/activities/${slug}`);
   };
 
   if (loading) {
@@ -133,7 +135,7 @@ const ActivitiesGrid: React.FC<ActivitiesGridProps> = ({ activities, loading }) 
               </div>
               
               <button 
-                onClick={() => handleViewActivity(activity.id)}
+                onClick={() => handleViewActivity(activity)}
                 className="w-full flex items-center justify-center space-x-2 text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300 text-sm font-medium transition-colors bg-accent-50 dark:bg-accent-900/20 py-3 rounded-lg hover:bg-accent-100 dark:hover:bg-accent-900/30"
               >
                 <Eye className="h-4 w-4" />

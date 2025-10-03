@@ -44,6 +44,10 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
     
   const mainImage = (settings && !loading) ? settings.mainImage : fallbackImage;
   const colorOverlay = (settings && !loading) ? settings.colorOverlay : fallbackColor;
+  
+  // NEW: Get text colors from settings (default to white if not set)
+  const titleColor = (settings && !loading) ? (settings.titleColor || '#FFFFFF') : '#FFFFFF';
+  const descriptionColor = (settings && !loading) ? (settings.descriptionColor || '#FFFFFF') : '#FFFFFF';
 
   // NEW: Single uniform overlay
   const uniformOverlay = hexToRgba(colorOverlay, 0.6); // 60% opacity for good readability
@@ -80,13 +84,17 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
       <div className="relative h-full flex items-center px-4 sm:px-6 lg:px-8">
         <div className={`max-w-3xl ${isRTL ? 'mr-auto text-right font-arabic' : 'ml-0 text-left'}`}>
           <div className="space-y-8">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white leading-tight drop-shadow-2xl animate-fade-in">
-              <span className="bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent">
-                {title}
-              </span>
+            <h1 
+              className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-tight drop-shadow-2xl animate-fade-in"
+              style={{ color: titleColor }}
+            >
+              {title}
             </h1>
             
-            <p className="text-xl md:text-2xl lg:text-3xl xl:text-4xl text-white/95 leading-relaxed drop-shadow-lg animate-slide-up max-w-2xl">
+            <p 
+              className="text-xl md:text-2xl lg:text-3xl xl:text-4xl leading-relaxed drop-shadow-lg animate-slide-up max-w-2xl"
+              style={{ color: descriptionColor }}
+            >
               {description}
             </p>
             

@@ -4,6 +4,7 @@ import { MapPin, Search, Filter, Eye, Navigation } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useLocationsData } from '../hooks/useLocationsData';
 import HeroBanner from '../components/HeroBanner';
+import { createLocationSlug } from '../services/locationsService';
 
 const Locations: React.FC = () => {
   const navigate = useNavigate();
@@ -35,8 +36,9 @@ const Locations: React.FC = () => {
     navigate(`/?location=${locationId}`);
   };
 
-  const handleViewLocation = (locationId: string) => {
-    navigate(`/locations/${locationId}`);
+  const handleViewLocation = (location: Location) => {
+    const slug = createLocationSlug(location);
+    navigate(`/locations/${slug}`);
   };
 
   if (loading) {
@@ -185,7 +187,7 @@ const Locations: React.FC = () => {
                     
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => handleViewLocation(location.id)}
+                        onClick={() => handleViewLocation(location)}
                         className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors"
                       >
                         <Eye className="h-4 w-4" />
@@ -195,7 +197,7 @@ const Locations: React.FC = () => {
                       </button>
                       
                       <button
-                        onClick={() => handleViewOnMap(location.id)}
+                        onClick={() => handleViewOnMap(location)}
                         className="flex items-center justify-center px-4 py-2 bg-primary-100 dark:bg-primary-700 text-primary-700 dark:text-primary-300 rounded-lg hover:bg-primary-200 dark:hover:bg-primary-600 transition-colors"
                         title={language === 'ar' ? 'عرض على الخريطة' : 'View on Map'}
                       >

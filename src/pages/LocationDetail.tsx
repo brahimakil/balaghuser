@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, ArrowLeft, Calendar, Info, Share, ExternalLink } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getLocationById, getLegendById, type Location, type Legend } from '../services/locationsService';
+import { getLocationById, getLocationBySlug, getLegendById, type Location, type Legend } from '../services/locationsService';
 import LocationMediaGallery from '../components/LocationMediaGallery';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { Icon } from 'leaflet';
@@ -26,8 +26,14 @@ const LocationDetail: React.FC = () => {
         setLoading(true);
         setError(null);
         
-        // Fetch location data
-        const locationData = await getLocationById(id);
+        // Try to fetch by slug first, then fall back to ID
+        let locationData = await getLocationBySlug(id);
+        
+        // If slug lookup fails, try ID lookup (backward compatibility)
+        if (!locationData) {
+          locationData = await getLocationById(id);
+        }
+        
         if (!locationData) {
           setError('Location not found');
           return;

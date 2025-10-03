@@ -6,39 +6,59 @@ import LazyInteractiveMap from '../components/LazyInteractiveMap';
 import MartyrsGrid from '../components/MartyrsGrid';
 import ActivitiesGrid from '../components/ActivitiesGrid';
 import { useDashboardData } from '../hooks/useDashboardData';
-import { getMainSettings } from '../services/websiteSettingsService';
+import { getDashboardSections, type DashboardSection } from '../services/websiteSettingsService';
+import { getDynamicPageById, getSelectedSectionsFromPage, type DynamicPage } from '../services/dynamicPagesService';
 import { scrollToElement } from '../utils/scrollUtils';
 import DynamicPageSections from '../components/DynamicPageSections';
-import { useDynamicPagesData } from '../hooks/useDynamicPagesData';
 
 const Dashboard: React.FC = () => {
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, language } = useLanguage();
   const { martyrs, activities, martyrsLoading, activitiesLoading, error } = useDashboardData();
   const [searchParams] = useSearchParams();
   
-  // NEW: Section ordering state
-  const [sectionOrder, setSectionOrder] = useState({
-    map: 1,
-    martyrs: 2,
-    activities: 3,
-    dynamicPages: 4 // NEW default
-  });
+  // NEW: Dashboard sections configuration
+  const [dashboardSections, setDashboardSections] = useState<DashboardSection[]>([]);
+  const [dynamicPagesCache, setDynamicPagesCache] = useState<Record<string, DynamicPage>>({});
+  const [sectionsLoading, setSectionsLoading] = useState(true);
 
-  const { dynamicPages, dynamicPagesLoading } = useDynamicPagesData();
-
-  // Load section order from website settings
+  // Load dashboard sections configuration
   useEffect(() => {
-    const loadSectionOrder = async () => {
+    const loadDashboardSections = async () => {
       try {
-        const settings = await getMainSettings();
-        if (settings?.sectionOrder) {
-          setSectionOrder(settings.sectionOrder);
-        }
+        setSectionsLoading(true);
+        const sections = await getDashboardSections();
+        setDashboardSections(sections);
+        
+        // Preload dynamic pages that are referenced
+        const pageIds = new Set<string>();
+        sections.forEach(section => {
+          if (section.dynamicPageId) {
+            pageIds.add(section.dynamicPageId);
+          }
+          if (section.parentPageId) {
+            pageIds.add(section.parentPageId);
+          }
+        });
+        
+        // Fetch all referenced dynamic pages
+        const pagesData: Record<string, DynamicPage> = {};
+        await Promise.all(
+          Array.from(pageIds).map(async (pageId) => {
+            const page = await getDynamicPageById(pageId);
+            if (page) {
+              pagesData[pageId] = page;
+            }
+          })
+        );
+        
+        setDynamicPagesCache(pagesData);
       } catch (error) {
-        console.error('Error loading section order:', error);
+        console.error('Error loading dashboard sections:', error);
+      } finally {
+        setSectionsLoading(false);
       }
     };
-    loadSectionOrder();
+    loadDashboardSections();
   }, []);
 
   // Check if we need to scroll to map
@@ -58,14 +78,31 @@ const Dashboard: React.FC = () => {
     }
   }, [searchParams]);
 
-  // Create ordered sections
-  const orderedSections = useMemo(() => {
-    const sections = [
-      {
-        id: 'map',
-        order: sectionOrder.map,
-        component: (
-          <div key="map" id="interactive-map-section" className="scroll-mt-32">
+  // Render a single section based on its configuration
+  const renderSection = (section: DashboardSection) => {
+    if (!section.isVisible) return null;
+
+    switch (section.type) {
+      case 'fixed':
+        return renderFixedSection(section);
+      
+      case 'dynamicPage':
+        return renderDynamicPage(section);
+      
+      case 'dynamicSection':
+        return renderDynamicSection(section);
+      
+      default:
+        return null;
+    }
+  };
+
+  // Render fixed sections (map, martyrs, activities)
+  const renderFixedSection = (section: DashboardSection) => {
+    switch (section.fixedSectionId) {
+      case 'map':
+        return (
+          <div key={section.id} id="interactive-map-section" className="scroll-mt-32">
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-primary-900 dark:text-white mb-2">
                 {isRTL ? 'خريطة المواقع' : 'Locations Map'}
@@ -76,13 +113,11 @@ const Dashboard: React.FC = () => {
             </div>
             <LazyInteractiveMap />
           </div>
-        )
-      },
-      {
-        id: 'martyrs',
-        order: sectionOrder.martyrs,
-        component: (
-          <div key="martyrs">
+        );
+      
+      case 'martyrs':
+        return (
+          <div key={section.id}>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-primary-900 dark:text-white mb-2">
                 {isRTL ? 'شهداؤنا' : 'Our Martyrs'}
@@ -93,13 +128,11 @@ const Dashboard: React.FC = () => {
             </div>
             <MartyrsGrid martyrs={martyrs} loading={martyrsLoading} />
           </div>
-        )
-      },
-      {
-        id: 'activities',
-        order: sectionOrder.activities,
-        component: (
-          <div key="activities">
+        );
+      
+      case 'activities':
+        return (
+          <div key={section.id}>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-primary-900 dark:text-white mb-2">
                 {isRTL ? 'أنشطة اليوم' : 'Today\'s Activities'}
@@ -110,33 +143,65 @@ const Dashboard: React.FC = () => {
             </div>
             <ActivitiesGrid activities={activities} loading={activitiesLoading} />
           </div>
-        )
-      },
-      // Add dynamic pages section
-      { 
-        id: 'dynamicPages', 
-        order: sectionOrder.dynamicPages || 4, // Default order 4
-        component: (
-          <section key="dynamic-pages" className="py-8">
-            <div className="container mx-auto px-4">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className={`text-3xl font-bold text-primary-900 dark:text-white ${isRTL ? 'text-right font-arabic' : 'text-left'}`}>
-                  {t('dashboard.customPagesTitle')}
-                </h2>
-              </div>
-              <DynamicPageSections 
-                pages={dynamicPages} 
-                loading={dynamicPagesLoading} 
-              />
-            </div>
-          </section>
-        )
-      }
-    ];
+        );
+      
+      default:
+        return null;
+    }
+  };
 
-    // Sort sections by order
-    return sections.sort((a, b) => a.order - b.order);
-  }, [sectionOrder, isRTL, martyrs, martyrsLoading, activities, activitiesLoading, dynamicPages, dynamicPagesLoading]);
+  // Render a full dynamic page
+  const renderDynamicPage = (section: DashboardSection) => {
+    if (!section.dynamicPageId) return null;
+    
+    const page = dynamicPagesCache[section.dynamicPageId];
+    if (!page) return null;
+
+    // Create a modified page object with all sections selected
+    const pageWithAllSections: DynamicPage = {
+      ...page,
+      selectedSectionsForAdmin: page.sections.map(s => s.id)
+    };
+
+    return (
+      <div key={section.id}>
+        <DynamicPageSections 
+          pages={[pageWithAllSections]} 
+          loading={false} 
+        />
+      </div>
+    );
+  };
+
+  // Render a specific section from a dynamic page
+  const renderDynamicSection = (section: DashboardSection) => {
+    if (!section.parentPageId || !section.dynamicSectionId) return null;
+    
+    const page = dynamicPagesCache[section.parentPageId];
+    if (!page) return null;
+
+    // Create a modified page object with only the selected section
+    const pageWithSelectedSection: DynamicPage = {
+      ...page,
+      selectedSectionsForAdmin: [section.dynamicSectionId]
+    };
+
+    return (
+      <div key={section.id}>
+        <DynamicPageSections 
+          pages={[pageWithSelectedSection]} 
+          loading={false} 
+        />
+      </div>
+    );
+  };
+
+  // Sort visible sections by order
+  const sortedSections = useMemo(() => {
+    return dashboardSections
+      .filter(section => section.isVisible)
+      .sort((a, b) => a.order - b.order);
+  }, [dashboardSections]);
 
   return (
     <div className="animate-fade-in">
@@ -149,7 +214,19 @@ const Dashboard: React.FC = () => {
 
       {/* Dynamic Ordered Sections */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
-        {orderedSections.map(section => section.component)}
+        {sectionsLoading ? (
+          // Loading skeleton
+          <div className="space-y-12">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="animate-pulse">
+                <div className="h-8 bg-primary-200 dark:bg-primary-700 rounded w-1/3 mb-4"></div>
+                <div className="h-64 bg-primary-200 dark:bg-primary-700 rounded"></div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          sortedSections.map(section => renderSection(section))
+        )}
       </div>
     </div>
   );
