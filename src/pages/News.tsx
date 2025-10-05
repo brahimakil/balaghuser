@@ -5,7 +5,8 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { getAllNews, getLiveNews, type NewsItem, createNewsSlug } from '../services/newsService';
 import HeroBanner from '../components/HeroBanner';
 
-const DEFAULT_NEWS_IMAGE = '';
+// ✅ FIX: Use your default news image from Firebase Storage
+const DEFAULT_NEWS_IMAGE = 'https://firebasestorage.googleapis.com/v0/b/balagh-adbc4.firebasestorage.app/o/news%2Ftemp%2Fmain%2Fdefault%20news%20image.png?alt=media&token=8e76cb14-c232-4d1b-9596-d3456dbacd6c';
 const ITEMS_PER_PAGE = 4; // Show 4 items at a time
 
 const News: React.FC = () => {
@@ -234,38 +235,8 @@ const News: React.FC = () => {
             </div>
           </div>
         )}
-
-        {/* Press News Section */}
-        {pressNews.length > 0 && (
-          <div>
-            <div className="flex items-center space-x-3 mb-6">
-              <h2 className="text-2xl font-bold text-primary-900 dark:text-white">
-                {language === 'ar' ? 'الأخبار الصحفية' : 'Press News'}
-              </h2>
-              <span className="text-sm text-primary-500 dark:text-primary-400">
-                ({pressNews.length} {language === 'ar' ? 'خبر' : 'news'})
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {displayedPressNews.map((news) => renderNewsCard(news, false, true))}
-            </div>
-
-            {hasMorePressNews && (
-              <div className="mt-8 text-center">
-                <button
-                  onClick={() => setPressNewsPage(prev => prev + 1)}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                >
-                  {language === 'ar' ? 'عرض المزيد' : 'Show More'}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Regular News Section */}
-        <div>
+   {/* Regular News Section */}
+   <div>
           <div className="flex items-center space-x-3 mb-6">
             <h2 className="text-2xl font-bold text-primary-900 dark:text-white">
               {language === 'ar' ? 'الأخبار العامة' : 'Regular News'}
@@ -304,6 +275,36 @@ const News: React.FC = () => {
             </>
           )}
         </div>
+        {/* Press News Section */}
+        {pressNews.length > 0 && (
+          <div>
+            <div className="flex items-center space-x-3 mb-6">
+              <h2 className="text-2xl font-bold text-primary-900 dark:text-white">
+                {language === 'ar' ? 'الأخبار الصحفية' : 'Press News'}
+              </h2>
+              <span className="text-sm text-primary-500 dark:text-primary-400">
+                ({pressNews.length} {language === 'ar' ? 'خبر' : 'news'})
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {displayedPressNews.map((news) => renderNewsCard(news, false, true))}
+            </div>
+
+            {hasMorePressNews && (
+              <div className="mt-8 text-center">
+                <button
+                  onClick={() => setPressNewsPage(prev => prev + 1)}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  {language === 'ar' ? 'عرض المزيد' : 'Show More'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+     
       </div>
     </div>
   );

@@ -109,6 +109,7 @@ const DynamicPage: React.FC = () => {
         );
         
       case 'photos':
+        const photoContent = language === 'ar' ? section.contentAr : section.contentEn;
         return (
           <div key={section.id} className="bg-white dark:bg-primary-800 rounded-xl shadow-lg p-6">
             <div className="flex items-center space-x-3 mb-6">
@@ -117,6 +118,14 @@ const DynamicPage: React.FC = () => {
                 {title}
               </h2>
             </div>
+            
+            {/* ✅ ADD: Show description if exists */}
+            {photoContent && (
+              <p className="text-primary-700 dark:text-primary-300 leading-relaxed text-lg mb-6 whitespace-pre-wrap">
+                {photoContent}
+              </p>
+            )}
+            
             <MediaGallery 
               photos={section.media || []} 
               videos={[]} 
@@ -125,6 +134,7 @@ const DynamicPage: React.FC = () => {
         );
         
       case 'videos':
+        const videoContent = language === 'ar' ? section.contentAr : section.contentEn;
         return (
           <div key={section.id} className="bg-white dark:bg-primary-800 rounded-xl shadow-lg p-6">
             <div className="flex items-center space-x-3 mb-6">
@@ -133,6 +143,14 @@ const DynamicPage: React.FC = () => {
                 {title}
               </h2>
             </div>
+            
+            {/* ✅ ADD: Show description if exists */}
+            {videoContent && (
+              <p className="text-primary-700 dark:text-primary-300 leading-relaxed text-lg mb-6 whitespace-pre-wrap">
+                {videoContent}
+              </p>
+            )}
+            
             <MediaGallery 
               photos={[]} 
               videos={section.media || []} 

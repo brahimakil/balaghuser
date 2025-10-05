@@ -82,10 +82,10 @@ const Activities: React.FC = () => {
       
       // Village filtering logic:
       // - If no village selected (default): show ONLY activities with no village (public activities)
-      // - If village selected: show ONLY activities for that specific village
+      // - If village selected: show activities for that village AND public activities (no village)
       const matchesVillage = selectedVillage === '' 
         ? (!activity.villageId || activity.villageId === '') // Default: show only public activities
-        : activity.villageId === selectedVillage; // Village selected: show only that village's activities
+        : (activity.villageId === selectedVillage || !activity.villageId || activity.villageId === ''); // Village selected: show that village's activities + public activities
       
       return matchesType && matchesVillage;
     });
@@ -93,6 +93,8 @@ const Activities: React.FC = () => {
 
   // Convert activities to calendar events with colors based on status
   const calendarEvents = useMemo(() => {
+    const now = new Date();
+    
     return filteredActivities.map(activity => {
       let startDate;
       let endDate;
@@ -123,6 +125,16 @@ const Activities: React.FC = () => {
         // Calculate end time based on start time + duration
         endDate = new Date(startDate.getTime() + (activity.durationHours || 1) * 60 * 60 * 1000);
         
+        // ✅ FIX: Check if activity has ended or is future
+        const hasEnded = endDate < now;
+        const isFuture = startDate > now;
+        
+        // Logic:
+        // - If future: always green
+        // - If ended: always orange
+        // - If current (happening now): use admin's isActive setting
+        const shouldBeGreen = isFuture || (!hasEnded && activity.isActive);
+        
         return {
           id: activity.id,
           title: language === 'ar' ? activity.nameAr : activity.nameEn,
@@ -131,8 +143,8 @@ const Activities: React.FC = () => {
           resource: activity,
           // Add custom styling based on activity status
           style: {
-            backgroundColor: activity.isActive ? '#10b981' : '#f59e0b', // Just green/orange
-            borderColor: activity.isActive ? '#059669' : '#d97706',
+            backgroundColor: shouldBeGreen ? '#10b981' : '#f59e0b',
+            borderColor: shouldBeGreen ? '#059669' : '#d97706',
             color: 'white'
           }
         };
@@ -309,8 +321,6 @@ const Activities: React.FC = () => {
                       if (village) {
                         const villageSlug = createVillageSlug(village);
                         params.set('village', villageSlug);
-                      } else if (e.target.value === 'no-village') {
-                        params.set('village', 'no-village');
                       }
                     } else {
                       params.delete('village');
@@ -321,10 +331,7 @@ const Activities: React.FC = () => {
                   className="w-full px-4 py-3 border border-primary-300 dark:border-primary-600 rounded-lg bg-white dark:bg-primary-700 text-primary-900 dark:text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent"
                 >
                   <option value="">
-                    {language === 'ar' ? 'جميع القرى' : 'All Villages'}
-                  </option>
-                  <option value="no-village">
-                    {language === 'ar' ? 'بدون قرية' : 'No Village'}
+                    {language === 'ar' ? 'عام (بدون قرية)' : 'Public Activities'}
                   </option>
                   {villages.map((village) => (
                     <option key={village.id} value={village.id}>

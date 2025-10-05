@@ -4,7 +4,8 @@ import { Menu, X, Moon, Sun, Globe, ChevronDown } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getMainSettings } from '../services/websiteSettingsService';
-import { getDynamicPages, type DynamicPage } from '../services/dynamicPagesService';
+import { getHeaderPages, getPagesByCategory, type DynamicPage } from '../services/dynamicPagesService';
+import { pageCategoriesService, type PageCategory } from '../services/pageCategoriesService';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -22,8 +23,13 @@ const Header: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [dynamicPages, setDynamicPages] = useState<DynamicPage[]>([]);
-  const [showRecentsDropdown, setShowRecentsDropdown] = useState(false);
+  // ✅ NEW STATE FOR CATEGORIES
+  const [categories, setCategories] = useState<PageCategory[]>([]);
+  const [headerPages, setHeaderPages] = useState<DynamicPage[]>([]);
+  const [categorizedPages, setCategorizedPages] = useState<Record<string, DynamicPage[]>>({});
+  const [openCategoryId, setOpenCategoryId] = useState<string | null>(null);
+  // ✅ ADD: State for mobile category expansion
+  const [openMobileCategoryId, setOpenMobileCategoryId] = useState<string | null>(null);
 
   // Fetch logos from Firebase
   useEffect(() => {
@@ -67,17 +73,40 @@ const Header: React.FC = () => {
     fetchLogos();
   }, []);
 
+  // ✅ FIX: Add location.pathname to dependency array
   useEffect(() => {
-    const fetchDynamicPages = async () => {
+    const fetchHeaderData = async () => {
       try {
-        const pages = await getDynamicPages();
-        setDynamicPages(pages.slice(0, 5)); // Show only first 5 pages
+        console.log('🔄 Fetching header data...'); // Debug log
+        
+        // Get active categories
+        const cats = await pageCategoriesService.getActiveCategories();
+        console.log('📁 Categories loaded:', cats);
+        setCategories(cats);
+
+        // Get pages that display directly in header
+        const directPages = await getHeaderPages();
+        console.log('📄 Direct header pages:', directPages);
+        setHeaderPages(directPages);
+
+        // Get pages for each category
+        const catPages: Record<string, DynamicPage[]> = {};
+        for (const cat of cats) {
+          if (cat.id) {
+            const pages = await getPagesByCategory(cat.id);
+            catPages[cat.id] = pages;
+            console.log(`📑 Pages in category "${cat.nameEn}":`, pages);
+          }
+        }
+        setCategorizedPages(catPages);
+        console.log('✅ Header data loaded successfully');
       } catch (error) {
-        console.error('Error fetching dynamic pages:', error);
+        console.error('❌ Error loading header data:', error);
       }
     };
-    fetchDynamicPages();
-  }, []);
+
+    fetchHeaderData();
+  }, [location.pathname]); // ✅ Re-fetch when route changes
 
   const navItems = [
     { key: 'dashboard', path: '/' },
@@ -189,39 +218,66 @@ const Header: React.FC = () => {
               </Link>
             ))}
             
-            {/* Recents Dropdown */}
-            {dynamicPages.length > 0 && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowRecentsDropdown(!showRecentsDropdown)}
-                  className="flex items-center space-x-1 px-3 py-2 rounded-lg transition-colors font-medium hover:text-primary-900 dark:hover:text-white"
-                  style={{ color: menuColors.normal }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = menuColors.hover;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = menuColors.normal;
-                  }}
+            {/* ✅ NEW: Direct pages in header */}
+            {headerPages.map(page => (
+              <Link
+                key={page.id}
+                to={`/pages/${page.slug}`}
+                className="px-3 py-2 rounded-lg transition-colors font-medium hover:text-primary-900 dark:hover:text-white"
+                style={{ color: menuColors.normal }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = menuColors.hover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = menuColors.normal;
+                }}
+              >
+                {language === 'ar' ? page.titleAr : page.titleEn}
+              </Link>
+            ))}
+
+            {/* ✅ NEW: Categories with dropdown */}
+            {categories.map(category => (
+              categorizedPages[category.id!]?.length > 0 && (
+                <div 
+                  key={category.id} 
+                  className="relative category-dropdown"
+                  onMouseEnter={() => setOpenCategoryId(category.id!)}
+                  onMouseLeave={() => setOpenCategoryId(null)}
                 >
-                  <span>{language === 'ar' ? 'الأحدث' : 'Recents'}</span>
-                  <ChevronDown className={`h-4 w-4 transform transition-transform ${showRecentsDropdown ? 'rotate-180' : ''}`} />
-                </button>
-                
-                {showRecentsDropdown && (
-                  <div className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-primary-800 rounded-lg shadow-lg border border-primary-200 dark:border-primary-700 py-2 z-50">
-                    {dynamicPages.map((page) => (
-                      <button
-                        key={page.id}
-                        onClick={() => handleRecentsClick(page.slug)}
-                        className="w-full text-left px-4 py-2 text-sm text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-700 transition-colors"
-                      >
-                        {language === 'ar' ? page.titleAr : page.titleEn}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                  <button
+                    className="flex items-center space-x-1 px-3 py-2 rounded-lg transition-colors font-medium hover:text-primary-900 dark:hover:text-white"
+                    style={{ color: menuColors.normal }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = menuColors.hover;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = menuColors.normal;
+                    }}
+                  >
+                    <span>{language === 'ar' ? category.nameAr : category.nameEn}</span>
+                    <ChevronDown className={`h-4 w-4 transform transition-transform ${openCategoryId === category.id ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {openCategoryId === category.id && (
+                    <div 
+                      className="absolute top-full left-0 mt-0 w-64 bg-white dark:bg-primary-800 rounded-lg shadow-lg border border-primary-200 dark:border-primary-700 py-2 z-[60]"
+                    >
+                      {categorizedPages[category.id!]?.map((page) => (
+                        <Link
+                          key={page.id}
+                          to={`/pages/${page.slug}`}
+                          className="block px-4 py-2 text-sm text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-700 transition-colors"
+                          onClick={() => setOpenCategoryId(null)}
+                        >
+                          {language === 'ar' ? page.titleAr : page.titleEn}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            ))}
           </nav>
 
           {/* Controls */}
@@ -287,23 +343,58 @@ const Header: React.FC = () => {
                 </Link>
               ))}
               
-              {/* Mobile Recents */}
-              {dynamicPages.length > 0 && (
-                <>
-                  <div className="px-3 py-2 text-sm font-medium text-primary-500 dark:text-primary-400 border-t border-primary-200 dark:border-primary-700 mt-2 pt-4">
-                    {language === 'ar' ? 'الأحدث' : 'Recents'}
-                  </div>
-                  {dynamicPages.map((page) => (
+              {/* ✅ Mobile: Direct pages */}
+              {headerPages.map(page => (
+                <Link
+                  key={page.id}
+                  to={`/pages/${page.slug}`}
+                  onClick={() => setIsMenuOpen(false)}
+                  className="px-3 py-2 rounded-lg transition-colors text-primary-600 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-800"
+                >
+                  {language === 'ar' ? page.titleAr : page.titleEn}
+                </Link>
+              ))}
+
+              {/* ✅ Mobile: Categories - IMPROVED with collapsible accordion */}
+              {categories.map(category => (
+                categorizedPages[category.id!]?.length > 0 && (
+                  <div key={category.id} className="border-t border-primary-200 dark:border-primary-700 mt-2 pt-2">
+                    {/* Category Header - Clickable to expand/collapse */}
                     <button
-                      key={page.id}
-                      onClick={() => handleRecentsClick(page.slug)}
-                      className="w-full text-left px-6 py-2 text-sm text-primary-600 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors"
+                      onClick={() => setOpenMobileCategoryId(
+                        openMobileCategoryId === category.id ? null : category.id!
+                      )}
+                      className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-primary-900 dark:text-white hover:bg-primary-100 dark:hover:bg-primary-800 rounded-lg transition-colors"
                     >
-                      {language === 'ar' ? page.titleAr : page.titleEn}
+                      <span>{language === 'ar' ? category.nameAr : category.nameEn}</span>
+                      <ChevronDown 
+                        className={`h-4 w-4 transition-transform duration-200 ${
+                          openMobileCategoryId === category.id ? 'rotate-180' : ''
+                        }`}
+                      />
                     </button>
-                  ))}
-                </>
-              )}
+                    
+                    {/* Subcategory Pages - Collapsible */}
+                    {openMobileCategoryId === category.id && (
+                      <div className="mt-1 space-y-1 animate-slide-down">
+                        {categorizedPages[category.id!]?.map((page) => (
+                          <Link
+                            key={page.id}
+                            to={`/pages/${page.slug}`}
+                            onClick={() => {
+                              setIsMenuOpen(false);
+                              setOpenMobileCategoryId(null);
+                            }}
+                            className="block px-6 py-2 text-sm text-primary-600 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-800 rounded-lg transition-colors"
+                          >
+                            {language === 'ar' ? page.titleAr : page.titleEn}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              ))}
             </nav>
           </div>
         )}

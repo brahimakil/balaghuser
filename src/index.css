@@ -384,3 +384,19 @@ html.dark .rbc-toolbar-label {
   color: #f1f5f9;
 }
 
+/* Add to your existing animations */
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.2s ease-out;
+}
+

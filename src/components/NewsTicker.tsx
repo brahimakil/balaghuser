@@ -64,7 +64,7 @@ const NewsTicker: React.FC = () => {
 
   return (
     <div 
-      className="sticky top-16 z-40 text-white shadow-lg"
+      className="sticky top-16 z-30 text-white shadow-lg"
       style={{
         backgroundColor: tickerSettings.backgroundColor,
         color: tickerSettings.textColor,

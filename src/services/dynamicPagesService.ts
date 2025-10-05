@@ -42,13 +42,17 @@ export interface DynamicPage {
   bannerTextAr: string;
   bannerColorOverlay?: string;
   showBannerOverlay?: boolean;
-  showOnAdminDashboard?: boolean; // NEW
-  selectedSectionsForAdmin?: string[]; // NEW - array of section IDs
+  showOnAdminDashboard?: boolean;
+  selectedSectionsForAdmin?: string[];
   sections: DynamicPageSection[];
   isActive: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   displayOrder: number;
+  
+  // ✅ NEW FIELDS FOR CATEGORIES
+  displayInHeader?: boolean;  // If true: show directly in header, if false: show in category
+  categoryId?: string;        // Category ID (only if displayInHeader = false)
 }
 
 export const getDynamicPages = async (): Promise<DynamicPage[]> => {
@@ -141,4 +145,47 @@ export const getSelectedSectionsFromPage = (page: DynamicPage): DynamicPageSecti
   return page.sections.filter(section => 
     page.selectedSectionsForAdmin!.includes(section.id)
   ).sort((a, b) => a.order - b.order);
+};
+
+// ✅ NEW: Get pages that display directly in header
+export const getHeaderPages = async (): Promise<DynamicPage[]> => {
+  try {
+    const q = query(
+      collection(db, 'dynamicPages'),
+      where('isActive', '==', true),
+      where('displayInHeader', '==', true),
+      orderBy('displayOrder', 'asc')
+    );
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as DynamicPage));
+  } catch (error) {
+    console.error('Error fetching header pages:', error);
+    return [];
+  }
+};
+
+// ✅ NEW: Get pages by category
+export const getPagesByCategory = async (categoryId: string): Promise<DynamicPage[]> => {
+  try {
+    const q = query(
+      collection(db, 'dynamicPages'),
+      where('isActive', '==', true),
+      where('displayInHeader', '==', false),
+      where('categoryId', '==', categoryId),
+      orderBy('displayOrder', 'asc')
+    );
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as DynamicPage));
+  } catch (error) {
+    console.error('Error fetching pages by category:', error);
+    return [];
+  }
 };

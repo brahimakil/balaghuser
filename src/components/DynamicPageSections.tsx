@@ -75,6 +75,7 @@ const DynamicPageSections: React.FC<DynamicPageSectionsProps> = ({ pages, loadin
         
       case 'photos':
         const photoCount = section.media?.length || 0;
+        const photoDescription = language === 'ar' ? section.contentAr : section.contentEn;
         return (
           <div className="p-4 bg-primary-50 dark:bg-primary-700 rounded-lg">
             <div className="flex items-center space-x-2 mb-2">
@@ -83,6 +84,14 @@ const DynamicPageSections: React.FC<DynamicPageSectionsProps> = ({ pages, loadin
                 {title}
               </h4>
             </div>
+            
+            {/* ✅ ADD: Show description if exists */}
+            {photoDescription && (
+              <p className="text-sm text-primary-600 dark:text-primary-300 mb-3 whitespace-pre-wrap">
+                {photoDescription}
+              </p>
+            )}
+            
             <p className="text-sm text-primary-600 dark:text-primary-300 mb-3">
               {photoCount} {language === 'ar' ? 'صورة' : photoCount === 1 ? 'photo' : 'photos'}
             </p>
@@ -125,6 +134,7 @@ const DynamicPageSections: React.FC<DynamicPageSectionsProps> = ({ pages, loadin
         
       case 'videos':
         const videoCount = section.media?.length || 0;
+        const videoDescription = language === 'ar' ? section.contentAr : section.contentEn;
         return (
           <div className="p-4 bg-primary-50 dark:bg-primary-700 rounded-lg">
             <div className="flex items-center space-x-2 mb-2">
@@ -133,6 +143,14 @@ const DynamicPageSections: React.FC<DynamicPageSectionsProps> = ({ pages, loadin
                 {title}
               </h4>
             </div>
+            
+            {/* ✅ ADD: Show description if exists */}
+            {videoDescription && (
+              <p className="text-sm text-primary-600 dark:text-primary-300 mb-3 whitespace-pre-wrap">
+                {videoDescription}
+              </p>
+            )}
+            
             <p className="text-sm text-primary-600 dark:text-primary-300 mb-3">
               {videoCount} {language === 'ar' ? 'فيديو' : videoCount === 1 ? 'video' : 'videos'}
             </p>
