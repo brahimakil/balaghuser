@@ -124,19 +124,22 @@ const ActivityMediaGallery: React.FC<ActivityMediaGalleryProps> = ({
 
       {/* Fullscreen Image Modal */}
       {fullscreenImage && (
-        <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
-          <div className="relative max-w-full max-h-full">
+        <div 
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+          onClick={() => setFullscreenImage(null)}
+        >
+          <div className="relative max-w-7xl max-h-[90vh] w-full">
             <button
               onClick={() => setFullscreenImage(null)}
-              className="absolute top-4 right-4 text-white hover:text-primary-300 z-10 bg-black/50 rounded-full p-2"
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors z-10 bg-black/50 rounded-full p-2"
             >
-              <X className="h-6 w-6" />
+              <X className="h-8 w-8" />
             </button>
             <img
               src={fullscreenImage}
               alt="Fullscreen view"
-              className="max-w-full max-h-full object-contain"
-              onClick={() => setFullscreenImage(null)}
+              className="max-w-full max-h-[90vh] w-auto h-auto object-contain mx-auto rounded-lg"
+              onClick={(e) => e.stopPropagation()}
             />
           </div>
         </div>
