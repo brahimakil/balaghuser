@@ -7,6 +7,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useMapData } from '../hooks/useMapData';
 import { getAllSectors, type Sector } from '../services/sectorsService';
 import type { Location, Legend } from '../services/locationsService';
+import { createLocationSlug } from '../services/locationsService';
 
 // Import Leaflet CSS
 import 'leaflet/dist/leaflet.css';

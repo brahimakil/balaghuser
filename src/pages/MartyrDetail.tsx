@@ -137,16 +137,37 @@ const MartyrDetail: React.FC = () => {
     );
   }
 
-  // Format date of birth - always use Gregorian (Miladi)
+  // Format date of birth - show both Hijri and Gregorian
   const formatDateOfBirth = (timestamp: any) => {
     if (!timestamp) return language === 'ar' ? 'غير محدد' : 'Not specified';
     
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return new Intl.DateTimeFormat(language === 'ar' ? 'ar-SA' : 'en-US', {
+    const hijriDates = toHijri(date);
+    
+    // Gregorian date
+    const gregorianDate = new Intl.DateTimeFormat(language === 'ar' ? 'ar-SA' : 'en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      calendar: 'gregory'
     }).format(date);
+    
+    // Return both dates formatted
+    if (language === 'ar') {
+      return (
+        <div className="space-y-1">
+          <div className="font-semibold">{hijriDates.ar}</div>
+          <div className="text-sm text-primary-500 dark:text-primary-400">{gregorianDate}</div>
+        </div>
+      );
+    } else {
+      return (
+        <div className="space-y-1">
+          <div className="font-semibold">{hijriDates.en}</div>
+          <div className="text-sm text-primary-500 dark:text-primary-400">{gregorianDate}</div>
+        </div>
+      );
+    }
   };
 
   // Format date of martyrdom - Hijri + Gregorian for both Arabic and English
