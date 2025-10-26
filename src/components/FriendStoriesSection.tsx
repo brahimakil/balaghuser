@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Users, Plus } from 'lucide-react';
+import { Heart, Users, Plus, X } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getApprovedStoriesForMartyr, type FriendStory } from '../services/friendStoriesService';
 import FriendStoryForm from './FriendStoryForm';
@@ -14,6 +14,7 @@ const FriendStoriesSection: React.FC<FriendStoriesSectionProps> = ({ martyrId, m
   const [stories, setStories] = useState<FriendStory[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     const loadStories = async () => {
@@ -121,12 +122,22 @@ const FriendStoriesSection: React.FC<FriendStoriesSectionProps> = ({ martyrId, m
                 {story.images && story.images.length > 0 && (
                   <div className="grid grid-cols-2 gap-4">
                     {story.images.map((image, index) => (
-                      <img
+                      <div
                         key={index}
-                        src={image.url}
-                        alt={`Story image ${index + 1}`}
-                        className="w-full h-40 object-cover rounded-lg"
-                      />
+                        className="relative group cursor-pointer overflow-hidden rounded-lg"
+                        onClick={() => setSelectedImage(image.url)}
+                      >
+                        <img
+                          src={image.url}
+                          alt={`Story image ${index + 1}`}
+                          className="w-full h-40 object-cover rounded-lg transition-transform duration-300 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-sm font-medium">
+                            {language === 'ar' ? 'عرض' : 'View'}
+                          </div>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -142,6 +153,32 @@ const FriendStoriesSection: React.FC<FriendStoriesSectionProps> = ({ martyrId, m
           martyrName={martyrName}
           onClose={() => setShowForm(false)}
         />
+      )}
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-7xl max-h-[90vh] w-full">
+            {/* Close button */}
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors z-10 bg-black/50 rounded-full p-2"
+            >
+              <X className="h-8 w-8" />
+            </button>
+            
+            {/* Full Image */}
+            <img
+              src={selectedImage}
+              alt="Full size"
+              className="max-w-full max-h-[90vh] object-contain mx-auto rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
       )}
     </>
   );
